@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Khairiyat · Society roll-call desk (prototype)</title>
+  <meta name="description" content="Khairiyat (ख़ैरियत): a roll-call and welfare follow-up desk for one housing society, the day after the Snap. Clickable prototype with fictional data.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23c2410c'/%3E%3Ctext x='32' y='44' font-size='34' text-anchor='middle' fill='white' font-family='sans-serif'%3E%E0%A4%96%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+
+  <div class="demo-banner" role="note">
+    <strong>Fictional sample data.</strong> Not a real society or real people. Prototype only: data stays in this browser’s local storage (not encrypted), there are no user accounts, and Khairiyat never calls or messages anyone.
+  </div>
+
+  <header id="app-header" class="app-header"></header>
+  <section id="kpis" class="kpis" aria-label="Roll-call summary"></section>
+
+  <div class="layout">
+    <main id="main" class="main" tabindex="-1"></main>
+    <aside id="aside" class="aside" aria-label="Demo guide and desk inbox"></aside>
+  </div>
+
+  <footer class="app-footer">
+    <p><strong>Khairiyat (ख़ैरियत)</strong> is a clickable prototype. Everything here is fictional. Its aim is coordination: no unresolved household or welfare case without an accepted next step. That is not a safety guarantee, and Khairiyat never decides that anyone is safe, missing or in danger.</p>
+    <p>Data is kept only in this browser’s local storage and is <strong>not encrypted</strong>; anyone using this browser profile can see it. There are no accounts or role-based permissions; messages for wardens, helpers and residents carry limited information by design, not by access control. Nothing leaves this page except text you copy and CSV files you choose to download.</p>
+  </footer>
+
+  <div id="drawer-root"></div>
+  <div id="modal-root"></div>
+  <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
+
+  <noscript><p class="noscript">Khairiyat needs JavaScript. Please enable it and reload this page.</p></noscript>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -5,7 +5,7 @@ Checked against the official brief, “Prompt 2 | Case Submission | Flipkart APM
 | Requirement (source) | How it was met | Verified by |
 |---|---|---|
 | PDF only (2b) | `YourName_YourCollege.pdf`, built from `khairiyat-2-pager.html` by headless Chromium | `pdfinfo` opens it; all pages rendered and inspected |
-| 1,200-word limit, excluding appendices (2b) | Cover 71 + body 1,094 = **1,165 words**, counting every table cell, the diagram's labels and all captions. The Node checker gives 1,164. Appendix (457 words) excluded. | `verify_pdf.py`, `verify-pdf.mjs` |
+| 1,200-word limit, excluding appendices (2b) | Cover 71 + body 1,100 = **1,171 words** with the blank template details (about 1,165 with real details), counting every table cell, the diagram's labels and all captions. The Node checker gives 1,170. Appendix (457 words) excluded. | `verify_pdf.py`, `verify-pdf.mjs` |
 | Body at most 2 pages, excluding cover and appendices (2c) | Cover (page 1), body (pages 2 and 3), appendix (page 4) | `verify_pdf.py`: the appendix starts on page 4 |
 | Font size 10 to 13, portrait, A4 (2d) | Every character between **10.0 and 13.0 pt**; all four pages 595 × 842 pt, portrait | `verify_pdf.py` reads the size of every character |
 | Visual aids allowed (2e) | Two tables (problem selection, success measures) and one workflow diagram drawn as inline SVG. All their text is real PDF text at 10 pt or larger and is included in the word count. The only images are the template's logo on the cover. | Every character's size measured; pages inspected |

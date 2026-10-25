@@ -9,7 +9,7 @@
   :root { --blue: #1155cc; --ink: #1d1d1d; --muted: #4a4a4a; --line: #c9c9c9; }
   * { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
-  body { font-family: "Liberation Sans", Arial, "FreeSans", sans-serif; font-size: 10.5pt; line-height: 1.34; color: var(--ink); }
+  body { font-family: "Liberation Sans", Arial, "FreeSans", sans-serif; font-size: 10.5pt; line-height: 1.32; color: var(--ink); }
   h1, h2, h3 { font-family: "Liberation Sans", Arial, "FreeSans", sans-serif; color: var(--blue); margin: 0; }
   p { margin: 0 0 5pt; }
   ul { margin: 0 0 4.5pt; padding-left: 13pt; }
@@ -32,13 +32,13 @@
   .cover .detail .ph { background: #ffe599; }
 
   /* Body */
-  .doc-title { font-size: 13pt; margin-bottom: 1.5pt; }
+  .doc-title { font-size: 13pt; margin-bottom: 4pt; }
   .doc-sub { font-size: 10pt; color: var(--muted); margin-bottom: 6pt; }
-  h2.q { font-size: 12pt; margin: 7pt 0 3pt; padding-top: 4pt; border-top: 0.6pt solid var(--line); }
+  h2.q { font-size: 12pt; margin: 5pt 0 2pt; padding-top: 3pt; border-top: 0.6pt solid var(--line); }
   .lead-in { font-weight: 700; }
   .cite { font-size: 10pt; }
   table.data { width: 100%; border-collapse: collapse; font-size: 10pt; line-height: 1.25; margin: 2pt 0 3pt; break-inside: avoid; }
-  table.data th, table.data td { border-bottom: 0.6pt solid var(--line); padding: 2pt 3pt; text-align: left; vertical-align: top; }
+  table.data th, table.data td { border-bottom: 0.6pt solid var(--line); padding: 1.5pt 3pt; text-align: left; vertical-align: top; }
   table.data thead th { border-bottom: 1pt solid #555; font-weight: 700; color: #222; }
   table.scores th:not(:first-child), table.scores td:not(:first-child) { text-align: center; }
   table.scores tr.chosen td { background: #eef3fb; font-weight: 700; }
@@ -78,12 +78,11 @@
 <!-- ═══ Body: two pages, excluding the cover and the appendix ═══ -->
 <section class="page body">
   <h1 class="doc-title">Khairiyat (ख़ैरियत): no unresolved household without an accepted next step</h1>
-  <p class="doc-sub">A roll-call and welfare follow-up desk for one Delhi-NCR housing society, the day after the Snap (2018).</p>
 
   <h2 class="q">1. What problem will Khairiyat solve?</h2>
   <p><span class="lead-in">The moment.</span> The morning after half of all people vanished, the secretary of a (fictional) 160-flat Gurugram society must answer two questions for every flat: has anyone reached this household, and does anyone here need help? The loss is uneven: one home has lost a carer, another a parent, another no one. Silent flats prove nothing: a flat may be empty, or a child or bedridden adult may be unable to answer. Guards and volunteers are fewer too, and reports arrive scattered and contradictory.</p>
-  <p><span class="lead-in">The failure we target</span> is follow-up that silently disappears: a flat marked OK on a child’s word, a volunteer who never said yes, a missed deadline, a service called but never committed, a rumour treated as fact. In 2018 societies coordinated through WhatsApp groups, which carry messages but no per-flat status <span class="cite">[1]</span> and spread rumours widely enough that WhatsApp limited forwarding in India in July 2018 <span class="cite">[2]</span>, and through spreadsheets, which hold status but do not enforce follow-through.</p>
-  <p><span class="lead-in">Why this problem.</span> We scored six Delhi-NCR problems (Table 1). Hospital transfers scored highest but depend on bed capacity and government ownership. Society roll-call scored lower on severity and evidence, but highest where software itself closes the gap and an RWA can adopt it on day one. Its main risk, that a well-run spreadsheet suffices, is what our validation tests.</p>
+  <p><span class="lead-in">The failure I target</span> is follow-up that silently disappears: a flat marked OK on a child’s word, a volunteer who never said yes, a missed deadline, a service called but never committed, a rumour treated as fact. In 2018 societies coordinated through WhatsApp groups, which carry messages but no per-flat status <span class="cite">[1]</span> and spread rumours widely enough that WhatsApp limited forwarding in India in July 2018 <span class="cite">[2]</span>, and through spreadsheets, which hold status but do not enforce follow-through.</p>
+  <p><span class="lead-in">Why this problem.</span> I have lived in apartment societies like this since birth, so the guard room, intercom, RWA and residents’ WhatsApp group that Khairiyat builds on are the setting I understand best. I also scored six Delhi-NCR problems (Table 1). Hospital transfers scored highest but depend on bed capacity and government ownership; society roll-call scored lower on severity and evidence, but highest where software itself closes the gap and an RWA can adopt it on day one. Its main risk, a well-run spreadsheet being enough, is what my validation tests.</p>
   <table class="data scores">
     <thead><tr><th>Problem</th><th>Urgency (10)</th><th>Severity (15)</th><th>Clear user (10)</th><th>Evidence (15)</th><th>Software matters (15)</th><th>Day-one (10)</th><th>Adoption (10)</th><th>Distinct (10)</th><th>Prototype (5)</th><th>Total</th></tr></thead>
     <tbody>
@@ -94,14 +93,14 @@
       <tr><td>Water tankers</td><td>4</td><td>4</td><td>4</td><td>4</td><td>2</td><td>3</td><td>3</td><td>2</td><td>3</td><td>65</td></tr>
       <tr><td>Older adults alone</td><td>4</td><td>4</td><td>4</td><td>4</td><td>2</td><td>3</td><td>2</td><td>2</td><td>4</td><td>64</td></tr>
     </tbody>
-    <caption>Table 1. Ratings 1 to 5, weighted (weight in brackets) to a total out of 100. Our judgement, not measurement.</caption>
+    <caption>Table 1. Ratings 1 to 5, weighted to 100 (weights in brackets); my judgement, not measurement.</caption>
   </table>
 
-  <h2 class="q">2. Who are we building it for?</h2>
-  <p><span class="lead-in">Primary user:</span> the roll-call coordinator of one large Delhi-NCR housing society, an RWA office-bearer or volunteer working from the society office on one laptop or phone: not technical, under pressure, possibly bereaved. <span class="lead-in">Affected but not using it:</span> wardens, guards and volunteers, who receive copyable task messages; residents and relatives, who send information and receive totals-only updates. <span class="lead-in">Initial scope:</span> an organised high-rise society with a flat register, guard room and intercom (assumptions), which favours better-off societies.</p>
+  <h2 class="q">2. Who am I building it for?</h2>
+  <p><span class="lead-in">Primary user:</span> the roll-call coordinator of one large Delhi-NCR housing society, an RWA office-bearer or volunteer working from the society office on one laptop or phone: not technical, under pressure, possibly bereaved. <span class="lead-in">Affected but not using it:</span> wardens, guards and volunteers who receive task messages; residents and relatives who send information and receive totals-only updates. <span class="lead-in">Initial scope:</span> an organised high-rise society with a flat register, guard room and intercom (assumptions), which favours better-off societies.</p>
 
   <h2 class="q">3. What is Khairiyat, and how does it solve the problem?</h2>
-  <p>A single-device coordination desk built on one rule: <b>every unresolved item has a next step that a named person has accepted, with a deadline, and nothing closes without evidence</b> (Figure 1).</p>
+  <p>I propose a single-device coordination desk built on one rule: <b>every unresolved item has a next step that a named person has accepted, with a deadline, and nothing closes without evidence</b> (Figure 1).</p>
   <ul>
     <li><b>Two separate records per unit</b> (lower lane). Confirmed never means everyone is safe.</li>
     <li><b>Accepted ownership.</b> Unaccepted work is not covered; a NO returns units to the queue; overdue work keeps its owner until extended with a reason or reassigned.</li>
@@ -154,10 +153,10 @@
     </svg>
     <figcaption id="fig1-cap">Figure 1. The next-step loop, and the two records each unit carries.</figcaption>
   </figure>
-  <p><span class="lead-in">Why not WhatsApp plus a well-run Google Sheet?</span> WhatsApp stays the messaging channel. A Sheet can hold the same columns but does not block a confirmation without a basis, reopen a gap when a volunteer declines or a deadline passes, or keep history instead of overwriting cells. It is better for simultaneous editors and familiarity; whether Khairiyat’s guardrails outweigh that must be tested.</p>
+  <p><span class="lead-in">Why not WhatsApp plus a well-run Google Sheet?</span> WhatsApp stays the messaging channel. A Sheet can hold the same columns but does not block a confirmation without a basis, reopen a gap when a volunteer declines or a deadline passes, or keep history instead of overwriting cells. It is better for simultaneous editors and familiarity; whether Khairiyat’s guardrails outweigh that is what I must test.</p>
   <p><span class="lead-in">The prototype</span> (one HTML file, fictional data) has an 18-step guided walkthrough that ends honestly: 129 of 160 households confirmed, the other 31 with accepted owners and deadlines, and two welfare cases still open with their reasons.</p>
 
-  <h2 class="q">4. How will we know it is working?</h2>
+  <h2 class="q">4. How will I know it is working?</h2>
   <p><span class="lead-in">Primary metric: next-step coverage.</span> It shows whether follow-up is under control, not that anyone is safe, so it always appears beside the unconfirmed and open-case counts (Table 2).</p>
   <table class="data metrics">
     <thead><tr><th style="width:21%">Measure</th><th style="width:33%">Definition</th><th style="width:27%">What it does not show</th><th style="width:19%">How collected</th></tr></thead>
@@ -165,13 +164,13 @@
       <tr><td><b>Next-step coverage</b> (primary)</td><td>Share of unresolved units whose next step is accepted and not overdue; time to first reach 100%</td><td>That anyone is safe or any case is resolved</td><td>Event log, automatically</td></tr>
       <tr><td>Households confirmed</td><td>Confirmed units at fixed checkpoints</td><td>That everyone in a unit is safe</td><td>Event log</td></tr>
       <tr><td>Awaiting acceptance; overdue</td><td>Counts at the same checkpoints</td><td>Whether the work was done well</td><td>Event log</td></tr>
-      <tr><td>Time to outcome</td><td>Median time from a case opening to an outcome with evidence</td><td>Whether the outcome was right</td><td>Event log</td></tr>
+      <tr><td>Time to outcome</td><td>Median time from case opening to outcome with evidence</td><td>Whether the outcome was right</td><td>Event log</td></tr>
       <tr><td>Incorrect closures (guardrail: 0)</td><td>Confirmations or closures contradicting the scenario’s ground truth</td><td>Real-world error rates</td><td>Comparison test</td></tr>
       <tr><td>Privacy exposures (guardrail: 0)</td><td>A unit number, name or concern in a group message</td><td>Leaks outside the app</td><td>Review of copied messages</td></tr>
     </tbody>
-    <caption>Table 2. Success measures. No targets are set until the comparison test gives a baseline.</caption>
+    <caption>Table 2. Success measures; targets wait for a baseline from the comparison test.</caption>
   </table>
-  <p><span class="lead-in">Validation (proposed; nothing has been run).</span> (1) Think-aloud sessions with about five RWA volunteers. (2) A comparison with a well-run Google Sheet: coordinator pairs run the same scripted scenario, with ten identical test cases, in both tools. Khairiyat continues only if it shows fewer incorrect closures or fewer unowned or overdue tasks without being materially slower; otherwise we publish the Sheet template and printable floor sheets instead. (3) Then a drill in one consenting tower.</p>
+  <p><span class="lead-in">Validation I propose (nothing has been run).</span> (1) Think-aloud sessions with about five RWA volunteers. (2) Coordinator pairs run the same scripted scenario, with ten identical test cases, in Khairiyat and in a well-run Google Sheet. I continue only if Khairiyat shows fewer incorrect closures or fewer unowned or overdue tasks without being materially slower; otherwise I publish the Sheet template and printable floor sheets instead. (3) A drill in one consenting tower.</p>
 
   <h2 class="q">5. Risks and limits</h2>
   <ul>
@@ -196,8 +195,8 @@
   <p><b>Facts with sources:</b> the three items above.</p>
   <p><b>Fictional premise and scenario assumptions:</b> half of all people vanished at once and unevenly; the society, its 160 flats, about 550 former residents, every person and every message are invented; the society has a flat register, a guard room with intercom, a laptop or phone at the desk, and enough willing volunteers; mobile networks are congested but checks inside the society do not depend on them.</p>
   <p><b>Untested product hypotheses:</b> a guided workflow produces fewer incorrect closures and fewer unowned or overdue follow-ups than a well-run spreadsheet, without being materially slower; coordinators can learn it under pressure; volunteers will reply YES or NO to a structured message.</p>
-  <p><b>Problem-selection scores (out of 100, our own weighted judgement):</b> hospital transfers 83; society roll-call 77; infant feeding 75; construction workers 69; water tankers 65; older adults alone 64. Criteria and weights: urgency (10), severity (15), user specificity (10), evidence (15), software makes the difference (15), day-one feasibility (10), adoption (10), differentiation (10), prototype shows the workflow (5).</p>
-  <p><b>No research is claimed.</b> No interviews, surveys, usability sessions or pilots have been conducted. The problem-selection scores are our own judgement against stated criteria, not measurements.</p>
+  <p><b>Problem-selection scores (out of 100, my own weighted judgement):</b> hospital transfers 83; society roll-call 77; infant feeding 75; construction workers 69; water tankers 65; older adults alone 64. Criteria and weights: urgency (10), severity (15), user specificity (10), evidence (15), software makes the difference (15), day-one feasibility (10), adoption (10), differentiation (10), prototype shows the workflow (5).</p>
+  <p><b>No research is claimed.</b> No interviews, surveys, usability sessions or pilots have been conducted. The problem-selection scores are my own judgement against stated criteria, not measurements.</p>
 
   <h2>A3. How to see the prototype</h2>
   <p>Unzip the prototype folder and open <b>index.html</b> in a browser; no installation, server or internet connection is needed. Choose <b>More → Reset demo (empty register)</b> and follow the walkthrough panel from step 1 to step 18. The final step’s handover summary shows the end state described in section 3.</p>

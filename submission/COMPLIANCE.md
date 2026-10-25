@@ -27,3 +27,10 @@ Checked against the official brief, “Prompt 2 | Case Submission | Flipkart APM
 
 - **Reference links** were not re-opened from this environment: its network policy blocked the three hosts tried (`prsindia.org`, `blog.whatsapp.com`, `www.fonearena.com`). Each fact was cross-checked through search-engine extracts from several outlets. The WhatsApp sources had also been checked earlier in this project.
 - **Personal details and the final file name** are not filled in.
+
+## Re-checking a rebuilt PDF
+
+Either checker gives the same page, size and placement results. Their word totals can differ by one, because the two tools split the Devanagari title differently.
+
+- **Python:** `pip install pdfplumber`, then `python3 submission/verify_pdf.py <file.pdf>` (on Windows, `py` instead of `python3`).
+- **Node only:** `npm install --no-save pdfjs-dist@4.10.38`, then `node submission/verify-pdf.mjs <file.pdf>`. It also reports any `[Your ...]` placeholder left unfilled.

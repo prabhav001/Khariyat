@@ -12,7 +12,7 @@ It is a coordination tool. It is not a safety guarantee, not an emergency servic
 
 > **All data is fictional.** Neelgiri Apartments, Gulmohar Enclave and Palm Grove Villas (all “Sector 00”), their units, every person and every message are invented.
 
-What changed in version 3, and why, is in [`docs/DEMO-AND-DESIGN-REVIEW.md`](docs/DEMO-AND-DESIGN-REVIEW.md). Version 2's review is kept in [`docs/REVIEW-AND-CHANGES.md`](docs/REVIEW-AND-CHANGES.md).
+What changed in version 3, and why, is in `docs/DEMO-AND-DESIGN-REVIEW.md`, and version 2's review in `docs/REVIEW-AND-CHANGES.md`. Both are in the [project repository](https://github.com/prabhav001/Khariyat), not in the prototype ZIP.
 
 ---
 
@@ -31,10 +31,16 @@ There is no server, install, internet connection, API key or external library.
 | `index.html` | Page shell |
 | `styles.css` | All styling (system fonts only) |
 | `app.js` | State, rules, rendering, scenario and walkthrough |
+| `README.md` | This file |
+
+These four files are the whole prototype. The [project repository](https://github.com/prabhav001/Khariyat) also holds files that are not needed to run it, and are not in the prototype ZIP:
+
+| In the repository only | What it is |
+|---|---|
 | `docs/` | Review documents, change logs and test reports |
-| `qa/e2e-check.js` | Optional automated browser check (needs Node and Playwright) |
-| `qa/check-no-em-dash.js` | Optional check that no file contains an em dash (needs Node) |
-| `submission/` | Repository only (not in the prototype ZIP): the two-page case submission, its HTML source, `build-pdf.js` and `verify_pdf.py` |
+| `qa/e2e-check.js`, `qa/check-no-em-dash.js` | Automated browser check and em dash check (need Node and Playwright) |
+| `submission/` | The two-page case submission: HTML source, build and check scripts |
+| `package.json` | The Node tools used by `qa/` and `submission/` |
 
 ---
 
@@ -294,9 +300,9 @@ A production version would need authenticated multi-user access, encryption, ret
 
 ## Verification
 
-See the test report in [`docs/DEMO-AND-DESIGN-REVIEW.md`](docs/DEMO-AND-DESIGN-REVIEW.md).
+The test report is in `docs/DEMO-AND-DESIGN-REVIEW.md` in the [project repository](https://github.com/prabhav001/Khariyat).
 
-To re-run the automated checks (needs Node; the prototype itself needs nothing installed):
+To re-run the automated checks from a copy of the repository (needs Node; the prototype itself needs nothing installed):
 
 ```
 npm install                       # once: Playwright and pdfjs-dist, from package.json

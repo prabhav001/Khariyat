@@ -5,12 +5,12 @@ const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
 const EM_DASH = String.fromCharCode(0x2014);
-const DEFAULT = ['index.html', 'styles.css', 'app.js', 'README.md', 'docs', 'qa'];
+const DEFAULT = ['index.html', 'styles.css', 'app.js', 'README.md', 'docs', 'qa', 'submission'];
 
 function walk(p, out) {
   const st = fs.statSync(p);
   if (st.isDirectory()) fs.readdirSync(p).forEach((n) => walk(path.join(p, n), out));
-  else if (/\.(html|css|js|md|txt|csv|json)$/i.test(p)) out.push(p);
+  else if (/\.(html|css|js|md|txt|csv|json|py)$/i.test(p)) out.push(p);
   return out;
 }
 

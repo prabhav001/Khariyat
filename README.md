@@ -34,6 +34,7 @@ There is no server, install, internet connection, API key or external library.
 | `docs/` | Review documents, change logs and test reports |
 | `qa/e2e-check.js` | Optional automated browser check (needs Node and Playwright) |
 | `qa/check-no-em-dash.js` | Optional check that no file contains an em dash (needs Node) |
+| `submission/` | Repository only (not in the prototype ZIP): the two-page case submission, its HTML source, `build-pdf.js` and `verify_pdf.py` |
 
 ---
 

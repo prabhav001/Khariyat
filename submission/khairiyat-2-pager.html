@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Khairiyat: case submission (Prompt 2)</title>
+<style>
+  /* A4 portrait. Every visible text element is between 10 pt and 13 pt. */
+  @page { size: A4; margin: 13mm 14mm 13mm 14mm; }
+  :root { --blue: #1155cc; --ink: #1d1d1d; --muted: #4a4a4a; --line: #c9c9c9; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body { font-family: "Liberation Sans", Arial, "FreeSans", sans-serif; font-size: 10.5pt; line-height: 1.38; color: var(--ink); }
+  h1, h2, h3 { font-family: "Liberation Sans", Arial, "FreeSans", sans-serif; color: var(--blue); margin: 0; }
+  p { margin: 0 0 5pt; }
+  ul { margin: 0 0 4.5pt; padding-left: 13pt; }
+  li { margin: 0 0 2.5pt; }
+  b { font-weight: 700; }
+  .page { break-after: page; }
+  .page:last-child { break-after: auto; }
+  .cover { position: relative; min-height: 268mm; }
+  .corner { position: absolute; right: 0; bottom: 0; width: 7.5mm; }
+
+  /* Cover: the official template's structure, wording and colours, set on A4. */
+  .cover { padding-top: 6mm; }
+  .cover .logo { display: block; width: 30mm; margin: 0 auto 10mm; }
+  .cover .band { border-top: 1.2pt solid var(--blue); border-bottom: 1.2pt solid var(--blue); padding: 5mm 0; text-align: center; margin-bottom: 9mm; }
+  .cover .band h1 { font-size: 13pt; }
+  .cover .box { border: 1pt solid #222; padding: 6mm 7mm; margin-bottom: 9mm; }
+  .cover .box h2 { font-size: 13pt; text-align: center; margin-bottom: 4mm; }
+  .cover .statement { font-size: 12pt; text-align: center; line-height: 1.45; margin: 0; }
+  .cover .detail { font-family: "Liberation Sans", Arial, sans-serif; font-weight: 700; font-size: 12pt; color: var(--blue); margin: 0 0 4mm; }
+  .cover .detail .ph { background: #ffe599; }
+
+  /* Body */
+  .doc-title { font-size: 13pt; margin-bottom: 1.5pt; }
+  .doc-sub { font-size: 10pt; color: var(--muted); margin-bottom: 6pt; }
+  h2.q { font-size: 12pt; margin: 7pt 0 3pt; padding-top: 4pt; border-top: 0.6pt solid var(--line); }
+  .lead-in { font-weight: 700; }
+  .ph-block { break-inside: avoid; font-size: 10pt; border: 1pt dashed #6b6b6b; background: #f4f4f4; padding: 4pt 6pt; margin: 4pt 0 6pt; color: #333; }
+  .ph-block b { color: #222; }
+  .cite { font-size: 10pt; }
+
+  /* Appendix */
+  .appendix h1 { font-size: 13pt; margin-bottom: 6pt; }
+  .appendix h2 { font-size: 11.5pt; margin: 8pt 0 3pt; }
+  .appendix p, .appendix li { font-size: 10pt; }
+  .refs li { margin-bottom: 4pt; word-break: break-word; }
+  .url { color: #1d4f9e; text-decoration: none; }
+</style>
+</head>
+<body>
+
+
+<!-- ═══ Cover page (excluded from the two-page body) ═══ -->
+<section class="page cover">
+  <img class="corner" src="assets/flipkart-bag.png" alt="">
+  <img class="logo" src="assets/flipkart-bag.png" alt="Flipkart">
+  <div class="band"><h1>Flipkart APM ’29 | Problem Statement</h1></div>
+  <div class="box">
+    <h2>Problem Statement</h2>
+    <p class="statement">It’s 2018 &amp; the Battle of Wakanda has just concluded. Thanos has snapped his fingers after completing the Infinity Gauntlet (gaining possession of all the Infinity Stones) &amp; 50% of the population has suddenly been eliminated. Build a digital product for this new world <b>as on the day after the Snap</b>.</p>
+  </div>
+  <div class="box">
+    <h2>Individual’s Details</h2>
+    <p class="detail" id="d-name"><span class="ph">[Your Full Name]</span></p>
+    <p class="detail" id="d-enrollment"><span class="ph">[Your Enrollment Number (Institute ID)]</span></p>
+    <p class="detail" id="d-email"><span class="ph">[Your Email]</span></p>
+    <p class="detail" id="d-phone"><span class="ph">[Your Phone Number]</span></p>
+  </div>
+</section>
+
+<!-- ═══ Body: two pages, excluding the cover and the appendix ═══ -->
+<section class="page body">
+  <h1 class="doc-title">Khairiyat (ख़ैरियत): no unresolved household without an accepted next step</h1>
+  <p class="doc-sub">A roll-call and welfare follow-up desk for one Delhi-NCR housing society, the day after the Snap (2018).</p>
+
+  <h2 class="q">1. What problem will Khairiyat solve?</h2>
+  <p><span class="lead-in">The moment.</span> The morning after half of all people vanished, the secretary of a (fictional) 160-flat Gurugram society must answer two questions for every flat: has anyone reached this household, and does anyone here need help? The loss is uneven: one home has lost a carer, another a parent, another no one. Silent flats prove nothing: a flat may be empty, or a child or bedridden adult may be unable to answer. Guards and volunteers are fewer too, and reports arrive scattered and contradictory by intercom, WhatsApp, door-knocks and relatives’ calls.</p>
+  <p><span class="lead-in">The failure we target</span> is follow-up that silently disappears: a flat marked OK on a child’s word, a volunteer who never said yes, a missed deadline nobody notices, a service called but never committed, a rumour treated as fact. In 2018 societies coordinated through WhatsApp groups, which carry messages but no per-flat status <span class="cite">[1]</span> and spread rumours widely enough that WhatsApp limited forwarding in India in July 2018 <span class="cite">[2]</span>, and through spreadsheets, which hold status but do not enforce follow-through.</p>
+  <p><span class="lead-in">Why this problem.</span> We scored six Delhi-NCR problems on nine weighted criteria. Hospital-transfer coordination scored highest (83/100) but depends on bed capacity and government ownership. Society roll-call scored 77: weaker on severity and evidence, but strongest where a digital product matters: software itself closes the gap, an RWA can adopt it on day one without permission, and the whole workflow can be prototyped. Its main weakness, that a well-run spreadsheet may suffice, is what our validation tests.</p>
+  <div class="ph-block">[<b>TABLE PLACEHOLDER: Problem selection.</b> Rows: six candidate problems. Columns: nine weighted criteria and a total out of 100 (scores in Appendix A2). Mark the chosen row without implying it scored highest. Full width, 10 pt or larger.]</div>
+
+  <h2 class="q">2. Who are we building it for?</h2>
+  <p><span class="lead-in">Primary user:</span> the roll-call coordinator of one large Delhi-NCR housing society: an RWA office-bearer or appointed volunteer working from the society office on one laptop or phone, not technical, under pressure, possibly bereaved. <span class="lead-in">Affected but not using it:</span> wardens, guards and volunteer helpers, who receive copyable task messages; residents and relatives, who send information and receive totals-only updates. <span class="lead-in">Initial scope:</span> an organised high-rise society with a flat register, guard room and intercom (assumptions). This favours better-off societies; printable floor sheets could extend it later.</p>
+
+  <h2 class="q">3. What is Khairiyat, and how does it solve the problem?</h2>
+  <p>A single-device coordination desk built on one rule: <b>every unresolved item has a next step that a named person has accepted, with a deadline, and nothing closes without evidence.</b></p>
+  <ul>
+    <li><b>Two separate records per unit.</b> Household: Unconfirmed, or Confirmed with its channel and reporter (or a named source for away or vacant). Welfare case: open until an outcome is recorded with evidence. Neither closes the other; Confirmed never means everyone is safe.</li>
+    <li><b>Accepted ownership.</b> Every task has an owner, deadline and acceptance status. Unaccepted work is not covered; a NO returns units to the queue; overdue work keeps its owner until extended with a reason or reassigned.</li>
+    <li><b>No invented evidence.</b> Bulk replies use a strict UNIT,CODE format; a missing channel, free text or a typo is flagged, never guessed. A contact attempt is not a handoff, and a handoff is not an outcome. Corrections are added, never overwritten.</li>
+    <li><b>Safe outputs.</b> Volunteer messages forbid entering or forcing a door and say to call emergency services directly; Khairiyat never calls or posts anything. Society updates are totals only; a handover summary lists every open item with owner and reason.</li>
+  </ul>
+  <div class="ph-block">[<b>VISUAL PLACEHOLDER: Core workflow diagram.</b> Show that nothing leaves the queue without an accepted owner or recorded evidence. Five stages: unconfirmed or concern reported; assigned, awaiting acceptance; accepted, with deadline; report or contact; outcome with evidence. Loop-backs: “declined”, “no answer”, “deadline passed”. A second lane separates household from welfare case. Thin lines, two colours, one-third page width.]</div>
+  <p><span class="lead-in">Why not WhatsApp plus a well-run Google Sheet?</span> WhatsApp stays the messaging channel. A Sheet can hold the same columns, but it does not block a confirmation without a basis, reopen a gap when a deadline passes or a volunteer declines, keep history instead of overwriting cells, or produce totals without copying sensitive rows. The Sheet is better for simultaneous editors, familiarity and backup; whether Khairiyat’s guardrails outweigh that is a hypothesis to test.</p>
+  <p><span class="lead-in">The prototype</span> runs from one HTML file with fictional data. Its 18-step guided walkthrough (about 20 minutes) covers a lost carer, a child alone, a rumour, a declined assignment, a police call without commitment and a wrong-unit correction. It ends honestly: 129 of 160 households confirmed, the other 31 with accepted owners and deadlines, and two welfare cases still open with their reasons.</p>
+
+  <h2 class="q">4. How will we know it is working?</h2>
+  <p><span class="lead-in">Primary metric: next-step coverage,</span> the share of unresolved units (household unconfirmed or case open) whose next step is accepted and not overdue, and the time until it first reaches 100%. It shows whether follow-up is under control, not that anyone is safe or cases are resolved, so it always appears beside those counts. <span class="lead-in">Supporting:</span> households confirmed, assignments awaiting acceptance and tasks overdue at fixed checkpoints; median time from a case opening to a recorded outcome. <span class="lead-in">Guardrails, target zero:</span> incorrect closures against the scenario’s ground truth, and privacy exposures (a unit number or concern in a group message).</p>
+  <div class="ph-block">[<b>TABLE PLACEHOLDER: Success metrics.</b> Columns: measure, definition, what it does not show, how collected. Rows: the primary metric, the supporting measures and both guardrails. Compact, 10 pt or larger.]</div>
+  <p><span class="lead-in">Validation (proposed; nothing has been run).</span> (1) Think-aloud sessions with about five RWA volunteers. (2) Comparison with a well-run Google Sheet: coordinator pairs run the same scripted 160-flat scenario, with ten identical test cases, in both tools in counterbalanced order. Khairiyat continues only if it shows fewer incorrect closures or fewer unowned or overdue tasks without being materially slower (threshold fixed in advance); otherwise we publish the Sheet template and printable floor sheets instead. (3) Then a drill in one consenting tower.</p>
+
+  <h2 class="q">5. Risks and limits</h2>
+  <ul>
+    <li>It tracks units, not people. It is not a missing-person system, emergency service or clinical triage tool; full coverage does not mean the emergency is over.</li>
+    <li>Assigning everything to the desk games coverage; the workload warning shows this but does not prevent it.</li>
+    <li>The prototype is one device with no accounts or encryption. Health details are sensitive personal data under India’s 2011 IT rules <span class="cite">[3]</span>, so a real version needs authentication, encryption, retention rules and notice to residents.</li>
+  </ul>
+</section>
+
+<!-- ═══ Appendix (excluded from the word count and the two-page body) ═══ -->
+<section class="page appendix">
+  <h1>Appendix: references, and what is fact, assumption or hypothesis</h1>
+
+  <h2>A1. References</h2>
+  <ol class="refs">
+    <li><b>WhatsApp groups in 2018.</b> Group size raised to 256 members in February 2016: Android Police, “WhatsApp group chats can now have up to 256 members”, 5 February 2016, <a class="url" href="https://androidpolice.com/2016/02/05/whatsapp-group-chats-can-now-have-up-to-256-members/">androidpolice.com/2016/02/05/whatsapp-group-chats-can-now-have-up-to-256-members/</a>. In-chat polls arrived only in November 2022: WhatsApp blog, “Communities now available”, <a class="url" href="https://blog.whatsapp.com/communities-now-available">blog.whatsapp.com/communities-now-available</a>. Supports: a 2018 group chat could pass messages but had no structured per-flat responses.</li>
+    <li><b>Forwarding limit in India, July 2018.</b> WhatsApp blog, “More changes to forwarding”, 19 July 2018, <a class="url" href="https://blog.whatsapp.com/more-changes-to-forwarding">blog.whatsapp.com/more-changes-to-forwarding</a>; Business Today, “To curb fake news, WhatsApp limits message forwarding to 5 users in India”, 21 July 2018, <a class="url" href="https://businesstoday.in/latest/economy-politics/story/fake-news-whatsapp-limits-message-forwarding-5-chats-facebook-108281-2018-07-21">businesstoday.in/latest/economy-politics/story/fake-news-whatsapp-limits-message-forwarding-5-chats-facebook-108281-2018-07-21</a>. Supports: WhatsApp tested a five-chat forwarding limit in India after mob violence linked to false messages; the same report gives WhatsApp’s user base in India as 200 million.</li>
+    <li><b>Sensitive personal data.</b> Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011, G.S.R. 313(E), 11 April 2011, Rule 3 (includes physical, physiological and mental health condition, and medical records and history). Copy at <a class="url" href="https://prsindia.org/files/bills_acts/bills_parliament/2011/IT_Rules_2011.pdf">prsindia.org/files/bills_acts/bills_parliament/2011/IT_Rules_2011.pdf</a>.</li>
+  </ol>
+  <p>The film does not state the Snap’s month in 2018, so no part of the product depends on a feature or rule that changed during 2018.</p>
+
+  <h2>A2. Facts, assumptions and hypotheses</h2>
+  <p><b>Facts with sources:</b> the three items above.</p>
+  <p><b>Fictional premise and scenario assumptions:</b> half of all people vanished at once and unevenly; the society, its 160 flats, about 550 former residents, every person and every message are invented; the society has a flat register, a guard room with intercom, a laptop or phone at the desk, and enough willing volunteers; mobile networks are congested but checks inside the society do not depend on them.</p>
+  <p><b>Untested product hypotheses:</b> a guided workflow produces fewer incorrect closures and fewer unowned or overdue follow-ups than a well-run spreadsheet, without being materially slower; coordinators can learn it under pressure; volunteers will reply YES or NO to a structured message.</p>
+  <p><b>Problem-selection scores (out of 100, our own weighted judgement):</b> hospital transfers 83; society roll-call 77; infant feeding 75; construction workers 69; water tankers 65; older adults alone 64. Criteria and weights: urgency (10), severity (15), user specificity (10), evidence (15), software makes the difference (15), day-one feasibility (10), adoption (10), differentiation (10), prototype shows the workflow (5).</p>
+  <p><b>No research is claimed.</b> No interviews, surveys, usability sessions or pilots have been conducted. The problem-selection scores are our own judgement against stated criteria, not measurements.</p>
+
+  <h2>A3. How to see the prototype</h2>
+  <p>Unzip the prototype folder and open <b>index.html</b> in a browser; no installation, server or internet connection is needed. Choose <b>More → Reset demo (empty register)</b> and follow the walkthrough panel from step 1 to step 18. The final step’s handover summary shows the end state described in section 3.</p>
+</section>
+
+<script>
+  // Personal details are injected by build-pdf.js from details.json; empty values keep the template placeholders.
+  window.__setDetails = (d) => {
+    const set = (id, v) => { if (v) document.getElementById(id).textContent = v; };
+    set('d-name', d.name); set('d-enrollment', d.enrollment); set('d-email', d.email); set('d-phone', d.phone);
+  };
+</script>
+</body>
+</html>

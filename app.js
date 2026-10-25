@@ -39,21 +39,21 @@
   const PRIORITY_RANK = { urgent: 0, unknown: 1, routine: 2 };
   const CHANNEL = { INTERCOM: 'Intercom', PHONE: 'Phone call', VISIT: 'Door visit', MESSAGE: 'Message from the household', UNKNOWN: 'Channel not stated' };
   const STAGE = {
-    open: 'Open — no handoff yet',
-    contacted: 'Contact attempted — no commitment yet',
-    acknowledged: 'Handoff agreed — not yet confirmed'
+    open: 'Open: no handoff yet',
+    contacted: 'Contact attempted: no commitment yet',
+    acknowledged: 'Handoff agreed: not yet confirmed'
   };
   const CONTACT_RESULT = {
     NOREPLY: 'Couldn’t get through / no reply',
-    ATTEMPT: 'Reached them — no commitment yet',
+    ATTEMPT: 'Reached them, but no commitment yet',
     ACK: 'They agreed to act or take over (handoff agreed, not yet confirmed)'
   };
   const OUTCOME = {
     CARE: { label: 'Care in place', ask: 'Who is now caring for the resident?', ph: 'e.g. Grandmother is with the child' },
     TRANSFERRED: { label: 'Taken over by a service', ask: 'Which service took over, and the reference', ph: 'e.g. Childline team took the child, ref 4471', needs: ['SERVICE', 'SEEN'] },
-    NOHELP: { label: 'Checked — no help needed', ask: 'Who checked, and what they found', ph: 'e.g. Visited; resident managing on her own' },
+    NOHELP: { label: 'Checked: no help needed', ask: 'Who checked, and what they found', ph: 'e.g. Visited; resident managing on her own' },
     ELSEWHERE: { label: 'Resident located elsewhere and safe', ask: 'Where, according to whom', ph: 'e.g. With her son in Faridabad' },
-    WITHDRAWN: { label: 'Withdrawn — entered in error' }
+    WITHDRAWN: { label: 'Withdrawn: entered in error' }
   };
   const EVIDENCE = {
     SEEN: 'Seen in person by a volunteer or helper',
@@ -64,18 +64,18 @@
   };
   const TASK_TYPE = { check: 'Household check', welfare: 'Welfare visit', followup: 'Follow-up' };
   const ACCEPT_VIA = { MESSAGE: 'Reply by WhatsApp or SMS', PHONE: 'Phone call', PERSON: 'In person at the desk' };
-  const INTERIM = ['Helper is with the resident', 'Visit made — more help needed', 'Other update'];
+  const INTERIM = ['Helper is with the resident', 'Visit made: more help needed', 'Other update'];
   const PEOPLE = [
     ['Arjun (C-304)', 'Floor warden'],
     ['Farhan (B-703)', 'Floor warden'],
     ['Rohit (B-501)', 'Floor warden'],
     ['Meena (D-204)', 'Floor warden'],
-    ['Sunita (A-603)', 'Floor warden'],
-    ['Nisha (D-503) + Sunita (A-603)', 'Warden pair'],
-    ['Dr. Kavita (A-201)', 'Helper · doctor'],
-    ['Nisha (D-503)', 'Helper · nurse'],
-    [DESK_OWNER, 'Coordinator · own tasks are accepted automatically'],
-    ['Guard room — intercom round', 'Reporter']
+    ['Sunita (A-603)', 'Volunteer'],
+    ['Nisha (D-503) + Imran (C-601)', 'Volunteer pair'],
+    ['Dr. Kavita (A-201)', 'Volunteer, doctor'],
+    ['Nisha (D-503)', 'Volunteer, nurse'],
+    [DESK_OWNER, 'Coordinator: own tasks are accepted automatically'],
+    ['Guard room', 'Reporter']
   ];
 
   // ── Small helpers ──────────────────────────────────────────────────────────
@@ -83,7 +83,7 @@
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const pad = (n) => String(n).padStart(2, '0');
   const hhmm = (min) => {
-    if (min == null) return '—';
+    if (min == null) return 'not set';
     const day = Math.floor(min / 1440);
     const m = ((min % 1440) + 1440) % 1440;
     return `${pad(Math.floor(m / 60))}:${pad(m % 60)}${day > 0 ? ` (+${day}d)` : ''}`;
@@ -176,8 +176,8 @@
 
   // Guard's intercom round for the Neelgiri demo: no channel on each line, on purpose.
   function guardRoundLines() {
-    const skipA = ['A-904', 'A-402', 'A-103', 'A-302', 'A-604', 'A-1003'];
-    const skipB = ['B-1001', 'B-204', 'B-302', 'B-704', 'B-902'];
+    const skipA = ['A-904', 'A-402', 'A-302', 'A-604', 'A-1003'];
+    const skipB = ['B-1001', 'B-302', 'B-704'];
     const lines = [];
     neelgiriIds().forEach((id) => {
       const t = id[0];
@@ -186,7 +186,7 @@
         if (id === 'A-103') lines.push('A-1O3,OK'); // letter O instead of zero, on purpose
         else if (!skipA.includes(id)) lines.push(`${id},OK`);
       } else if (t === 'B') {
-        if (id === 'B-204') lines.push('B-204,HELP'); // concern category missing, on purpose
+        if (id === 'B-902') lines.push('B-902,HELP'); // concern category missing, on purpose (step 5)
         else if (!skipB.includes(id)) lines.push(`${id},OK`); // includes B-203, which was really B-302
       } else if (t === 'D' && fl <= 6 && id !== 'D-403') lines.push(`${id},OK`);
     });
@@ -194,185 +194,371 @@
   }
 
   // ── Scripted demo messages (Neelgiri register only) ────────────────────────
-  // Each arrives once its condition has held for `delay` demo-minutes. Khairiyat never interprets them.
+  // Each message belongs to one walkthrough step. It arrives once its condition has held for
+  // `delay` demo-minutes. Khairiyat never interprets them: the coordinator decides what to record.
   const MSG_SPECS = [
     {
       id: 'guard',
+      label: 'Ramesh (guard room): intercom list',
+      step: 3,
       delay: 0,
+      expect: 'Arrives when the register is imported.',
       cond: (s) => s.order.length > 0,
       build: () => {
         const lines = guardRoundLines();
         return {
-          from: 'Ramesh · guard room',
+          from: 'Ramesh, guard room',
           channel: 'Intercom round, typed up by the guard',
-          text: 'Raat se intercom kar rahe hain — saari calls intercom se hi ki hain. Tower A, B aur D ki list neeche hai. Tower C ka intercom kaam nahi kar raha.',
-          translation: '“We’ve been ringing flats since last night — every call was on the intercom. The list for Towers A, B and D is below. Tower C’s intercom isn’t working.”',
+          text: 'Raat bhar intercom kiya, saari calls intercom se hi. Tower A, B aur D ki list neeche hai. Kai gharon ne bataya ki ghar ka koi nahi raha; humne sirf likha ki phone kisne uthaya. Tower C ka intercom panel band hai. Suresh aur Pappu kal se nahi hain, hum do hi guard bache hain.',
+          translation: '“We rang flats through the night, every call on the intercom. The list for Towers A, B and D is below. Many homes said someone in the family is gone; we only noted who answered. Tower C’s intercom panel is down. Suresh and Pappu (guards) have been gone since yesterday; only two of us are left.”',
           lines: lines.join('\n'),
           lineCount: lines.length,
-          reporter: 'Guard room — intercom round',
-          hint: 'Copy to bulk update and Validate: the lines don’t name a channel, so they are rejected. The guard says every call was on the intercom, so choose Intercom as the batch channel and Validate again. Two lines stay wrong on purpose.'
+          reporter: 'Guard room (intercom round)',
+          hint: 'Step 3. The lines don’t name a channel, but Ramesh says every call was on the intercom: choose Intercom as the batch channel. Fix the A-1O3 typo and hold back the B-902 line.'
         };
       }
     },
     {
       id: 'a402',
+      label: 'A-402 resident: WhatsApp message',
+      step: 4,
       delay: 0,
+      expect: 'Arrives when the register is imported.',
       cond: (s) => !!s.flats['A-402'],
       build: () => ({
-        from: 'Resident of A-402 · society WhatsApp group',
+        from: 'Resident of A-402, society WhatsApp group',
         channel: 'WhatsApp group',
-        text: 'A-402 mein sab theek hai, hum do log hain 🙏',
-        translation: '“All fine in A-402, there are two of us.”',
+        text: 'A-402: main aur bachche theek hain. Mere pati kal shaam se nahi hain. Abhi koi madad nahi chahiye. 🙏',
+        translation: '“A-402: the children and I are fine. My husband has been gone since yesterday evening. We don’t need help right now.”',
         flat: 'A-402',
-        hint: 'Khairiyat doesn’t read chat. Open A-402 → “Confirm — adult reached”, channel “Message from the household”, reported by the resident.'
+        hint: 'Step 4. Confirm the household from her own message. Khairiyat records the household, not who is gone.'
+      })
+    },
+    {
+      id: 'rumour704',
+      label: 'B-801 resident: rumour about B-704',
+      step: 4,
+      delay: 0,
+      expect: 'Arrives when the register is imported.',
+      cond: (s) => !!s.flats['B-704'],
+      build: () => ({
+        from: 'Resident of B-801, society WhatsApp group',
+        channel: 'WhatsApp group',
+        text: 'B-704 wali family shayad gayab ho gayi hai. Kal se koi awaaz nahi aayi.',
+        translation: '“The B-704 family have probably vanished. No sound from there since yesterday.”',
+        flat: 'B-704',
+        hint: 'Step 4. A guess is not a source. Record nothing for B-704, and mark this message handled.'
+      })
+    },
+    {
+      id: 'b902',
+      label: 'Ramesh: about the B-902 line',
+      step: 5,
+      delay: 0,
+      expect: 'Arrives once the guard’s list has been applied (step 3).',
+      cond: (s) => !!s.flags.guardApplied,
+      build: () => ({
+        from: 'Ramesh, guard room',
+        channel: 'Intercom, guard to desk',
+        text: 'B-902 wali line: Bhalla aunty ne khud intercom uthaya tha. Unki attendant kal se nahi hai. Woh wheelchair par hain aur Tower B ki lift band hai. Kal raat se kuch khaya nahi.',
+        translation: '“About the B-902 line: Mrs Bhalla answered the intercom herself. Her live-in attendant has been gone since yesterday. She uses a wheelchair and the Tower B lift has stopped. She hasn’t eaten since last night.”',
+        flat: 'B-902',
+        hint: 'Step 5. She answered, so her household can be confirmed. Her situation is a separate welfare concern.'
+      })
+    },
+    {
+      id: 'sunitaYes',
+      label: 'Sunita: reply',
+      step: 5,
+      delay: 0,
+      expect: 'Arrives as soon as you assign the B-902 visit.',
+      cond: (s) => pendingOn(s, 'B-902', /^sunita/i),
+      build: () => ({
+        from: 'Sunita (A-603), volunteer',
+        channel: 'Phone call to the desk',
+        text: 'Haan, main abhi B-902 jaati hoon, kuch khaana le kar.',
+        translation: '“Yes, I’ll go to B-902 now and take some food.”',
+        flat: 'B-902',
+        hint: 'Step 5. Record her YES (Phone call).'
       })
     },
     {
       id: 'arjunYes',
+      label: 'Arjun: reply',
+      step: 7,
       delay: STEP,
+      expect: 'Arrives 15 demo-minutes after you assign Arjun.',
       cond: (s) => pendingOf(s, /^arjun/i).length > 0,
       build: (s) => {
-        const ts = pendingOf(s, /^arjun/i);
+        const n = pendingOf(s, /^arjun/i).length;
         return {
-          from: `${ts[0].owner} · floor warden`,
-          channel: 'WhatsApp, warden → desk',
-          text: `YES. ${ts.length} flats le liye, abhi shuru kar raha hoon.`,
-          translation: `“YES. I’ve taken the ${ts.length} flats; starting now.”`,
-          hint: 'Record his acceptance: Unresolved work → Awaiting acceptance → Record response… → Accepted, by WhatsApp. Until then his flats are not counted as covered.'
+          from: 'Arjun (C-304), floor warden',
+          channel: 'WhatsApp, warden to desk',
+          text: `YES. ${n} flats le liye, seedhiyon se shuru kar raha hoon.`,
+          translation: `“YES. I’ve taken the ${n} flats; starting on the stairs now.”`,
+          hint: 'Step 7. Record his YES (Reply by WhatsApp or SMS).'
         };
       }
     },
     {
       id: 'farhanNo',
+      label: 'Farhan: reply',
+      step: 7,
       delay: STEP,
+      expect: 'Arrives 15 demo-minutes after you assign Farhan.',
       cond: (s) => pendingOf(s, /^farhan/i).length > 0,
-      build: (s) => ({
-        from: `${pendingOf(s, /^farhan/i)[0].owner} · floor warden`,
-        channel: 'WhatsApp, warden → desk',
-        text: 'NO — sorry, nahi kar paunga. Ghar par bachche akele hain.',
-        translation: '“NO — sorry, I can’t. My children are alone at home.”',
-        hint: 'Record the decline with his reason. His flats go back to “Needs an owner”. Reassign them (e.g. to Rohit (B-501), who is at the desk, with +90 min) and record Rohit’s YES in person.'
+      build: () => ({
+        from: 'Farhan (B-703), floor warden',
+        channel: 'WhatsApp, warden to desk',
+        text: 'NO, sorry. Meri wife kal shaam se nahi hai. Bachche ghar par akele hain, main aaj nahi nikal sakta.',
+        translation: '“NO, sorry. My wife has been gone since yesterday evening. The children are alone at home; I can’t go out today.”',
+        hint: 'Step 7. Record the NO with his reason. His flats go back to “Needs an owner”.'
       })
     },
     {
-      id: 'arjunReply',
+      id: 'meenaYes',
+      label: 'Meena: reply',
+      step: 7,
       delay: STEP,
+      expect: 'Arrives 15 demo-minutes after you assign Meena.',
+      cond: (s) => pendingOf(s, /^meena/i).length > 0,
+      build: () => ({
+        from: 'Meena (D-204), floor warden',
+        channel: 'WhatsApp, warden to desk',
+        text: 'YES, Tower D ki upar wali manzilein main dekh leti hoon.',
+        translation: '“YES, I’ll take Tower D’s upper floors.”',
+        hint: 'Step 7. Record her YES (Reply by WhatsApp or SMS).'
+      })
+    },
+    {
+      id: 'rohitYes',
+      label: 'Rohit: reply',
+      step: 7,
+      delay: 0,
+      expect: 'Arrives as soon as you assign Rohit.',
+      cond: (s) => pendingOf(s, /^rohit/i).length > 0,
+      build: () => ({
+        from: 'Rohit (B-501), at the desk',
+        channel: 'In person at the desk',
+        text: 'Haan, Farhan wale flats main le leta hoon.',
+        translation: '“Yes, I’ll take Farhan’s flats.”',
+        hint: 'Step 7. Record his YES (In person at the desk).'
+      })
+    },
+    {
+      id: 'arjunReport',
+      label: 'Arjun: report for his flats',
+      step: 8,
+      delay: STEP,
+      expect: 'Arrives 15 demo-minutes after you record Arjun’s YES.',
       cond: (s) => tasksOf(s, /^arjun/i).some((t) => t.type === 'check' && t.accept === 'accepted'),
       build: (s) => {
         const ts = tasksOf(s, /^arjun/i).filter((t) => t.type === 'check' && t.accept === 'accepted').sort((a, b) => cmpUnitIn(s, a.flatId, b.flatId));
         const special = { 'C-702': 'C-702,HELP,CHILD', 'C-804': 'C-804,NOANS', 'C-803': 'C-803,AWAY,family phoned warden', 'C-1004': 'C-1004,NOANS' };
         const lines = ['C-804 mein do baar bell bajayi, koi jawab nahi'].concat(ts.map((t) => special[t.flatId] || `${t.flatId},OK,VISIT`));
         return {
-          from: `${ts[0].owner} · floor warden`,
-          channel: 'WhatsApp, warden → desk',
-          text: 'Meri list ho gayi. C-804 mein do baar bell bajayi, koi jawab nahi. Baaki neeche.',
-          translation: '“My list is done. Rang C-804’s bell twice, no answer. The rest is below.”',
+          from: 'Arjun (C-304), floor warden',
+          channel: 'WhatsApp, warden to desk',
+          text: 'Meri list ho gayi. C-804 mein do baar bell bajayi, koi jawab nahi. Bahut gharon mein koi na koi nahi raha; maine sirf likha ki kisse baat hui. Baaki neeche.',
+          translation: '“My list is done. Rang C-804’s bell twice, no answer. Many homes have lost someone; I only noted who I spoke to. The rest is below.”',
           lines: lines.join('\n'),
           lineCount: lines.length,
-          reporter: ts[0].owner,
-          hint: 'Copy to bulk update and Validate. The first line is free text: Khairiyat flags it instead of guessing. Each line names its own channel (VISIT), so no batch channel is needed.'
+          reporter: 'Arjun (C-304)',
+          hint: 'Step 8. The first line is free text and will be flagged. Every other line names its own channel.'
         };
       }
     },
     {
       id: 'kavitaYes',
+      label: 'Dr. Kavita: reply',
+      step: 9,
       delay: 0,
-      cond: (s) => pendingOf(s, /kavita/i).length > 0,
-      build: (s) => ({
-        from: `${pendingOf(s, /kavita/i)[0].owner} · helper`,
+      expect: 'Arrives as soon as you assign the C-702 visit.',
+      cond: (s) => pendingOn(s, 'C-702', /kavita/i),
+      build: () => ({
+        from: 'Dr. Kavita (A-201), volunteer',
         channel: 'Phone call to the desk',
         text: 'Haan, main jaa rahi hoon. Das minute mein pahunchungi.',
         translation: '“Yes, I’m going. I’ll be there in ten minutes.”',
         flat: 'C-702',
-        hint: 'Record her acceptance (by phone).'
-      })
-    },
-    {
-      id: 'kavitaUpdate',
-      delay: STEP,
-      cond: (s) => {
-        const f = s.flats['C-702'];
-        const t = f && openTaskIn(s, f);
-        return !!(f && caseIn(s, f) && t && t.accept === 'accepted' && /kavita/i.test(t.owner));
-      },
-      build: (s) => ({
-        from: `${openTaskIn(s, s.flats['C-702']).owner} · helper`,
-        channel: 'Phone call to the desk',
-        text: 'Main C-702 ke bahar hoon, bachchi ne darwaza khola. Woh theek hai, par ghar par koi bada nahi hai. Uski nani Rohini se aa rahi hain.',
-        translation: '“I’m outside C-702; the little girl opened the door. She’s fine, but there’s no adult at home. Her grandmother is coming from Rohini.”',
-        flat: 'C-702',
-        hint: 'Record an interim update (Helper is with the resident) with a next deadline. Don’t confirm the household: only a child has been reached.'
-      })
-    },
-    {
-      id: 'grandma',
-      delay: STEP,
-      cond: (s) => {
-        const c = caseIn(s, s.flats['C-702']);
-        return !!(c && c.updates.length > 0);
-      },
-      build: (s) => ({
-        from: `${caseIn(s, s.flats['C-702']).updates[0].by} · helper`,
-        channel: 'Phone call to the desk',
-        text: 'Nani aa gayi hain. Bachchi unke saath hai, dono theek hain. Maine dono ko dekh liya hai, ab ghar ja rahi hoon.',
-        translation: '“The grandmother has arrived. The girl is with her; both are fine. I’ve seen them both; I’m heading home now.”',
-        flat: 'C-702',
-        hint: 'Two separate records: (1) Confirm the household — adult reached, Door visit, reported by the helper. The case stays open. (2) Close the case: Care in place, evidence “Seen in person”.'
+        hint: 'Step 9. Record her YES (Phone call).'
       })
     },
     {
       id: 'rel804',
+      label: 'Daughter of the C-804 resident: phone call',
+      step: 10,
       delay: 0,
-      cond: (s) => {
-        const f = s.flats['C-804'];
-        return !!f && !caseIn(s, f) && f.status === 'unconfirmed' && hasEventIn(s, 'C-804', 'outcome', /no answer/i);
-      },
+      expect: 'Arrives once C-804’s “no answer” has been recorded (step 8).',
+      cond: (s) => !!s.flats['C-804'] && hasEventIn(s, 'C-804', 'outcome', /no answer/i),
       build: () => ({
         from: 'Caller on the desk phone',
         channel: 'Desk phone',
-        text: 'Meri mummy C-804 mein akeli rehti hain, subah se phone nahi utha rahi. Unki umar 78 hai.',
-        translation: '“My mother lives alone in C-804 and hasn’t answered her phone since morning. She is 78.”',
+        text: 'Meri mummy C-804 mein akeli rehti hain. Subah se phone nahi utha rahi. Unki umar 78 hai. Main Dwarka mein hoon, aa nahi sakti.',
+        translation: '“My mother lives alone in C-804. She hasn’t answered her phone since morning. She is 78. I’m in Dwarka and can’t get there.”',
         flat: 'C-804',
-        hint: 'A relative’s worry is a reason for a welfare check, not proof of anything. Open C-804 → “Report a welfare concern” (Adult who can’t manage alone, source: relative’s call), then assign a second visit to two wardens.'
+        hint: 'Step 10. A worry is a reason to check, not proof of anything.'
       })
     },
     {
       id: 'pairYes',
+      label: 'Nisha and Imran: reply',
+      step: 10,
       delay: 0,
-      cond: (s) => {
-        const f = s.flats['C-804'];
-        const t = f && openTaskIn(s, f);
-        return !!(t && t.type === 'welfare' && t.accept === 'pending');
-      },
-      build: (s) => ({
-        from: openTaskIn(s, s.flats['C-804']).owner,
-        channel: 'WhatsApp, wardens → desk',
-        text: 'YES, hum dono abhi jaate hain.',
-        translation: '“YES, the two of us are going now.”',
+      expect: 'Arrives as soon as you assign the C-804 visit to the pair.',
+      cond: (s) => pendingOn(s, 'C-804', /\+/),
+      build: () => ({
+        from: 'Nisha (D-503) + Imran (C-601), volunteers',
+        channel: 'WhatsApp, volunteers to desk',
+        text: 'YES, hum dono saath jaate hain.',
+        translation: '“YES, the two of us will go together.”',
         flat: 'C-804',
-        hint: 'Record their acceptance.'
+        hint: 'Step 10. Record their YES.'
+      })
+    },
+    {
+      id: 'kavitaUpdate',
+      label: 'Dr. Kavita: update from C-702',
+      step: 11,
+      delay: STEP,
+      expect: 'Arrives 15 demo-minutes after Kavita accepts.',
+      cond: (s) => acceptedOn(s, 'C-702', /kavita/i) && !!caseIn(s, s.flats['C-702']),
+      build: () => ({
+        from: 'Dr. Kavita (A-201), volunteer',
+        channel: 'Phone call to the desk',
+        text: 'Main C-702 mein hoon. Bachchi theek hai, uske mummy papa kal raat se ghar nahi aaye. Uski bua D-603 mein rehti hain; maine phone kiya, woh aa rahi hain. Tab tak main yahin hoon.',
+        translation: '“I’m at C-702. The girl is fine; her parents haven’t come home since last night. Her aunt lives in D-603; I phoned her and she’s coming. I’ll stay until then.”',
+        flat: 'C-702',
+        hint: 'Step 11. An update, not an outcome. The case stays open and the household stays Unconfirmed.'
+      })
+    },
+    {
+      id: 'sunitaUpdate',
+      label: 'Sunita: update from B-902',
+      step: 11,
+      delay: 45,
+      expect: 'Arrives 45 demo-minutes after Sunita accepts (09:45 in the walkthrough).',
+      cond: (s) => acceptedOn(s, 'B-902', /^sunita/i) && !!caseIn(s, s.flats['B-902']),
+      build: () => ({
+        from: 'Sunita (A-603), volunteer',
+        channel: 'Phone call to the desk',
+        text: 'B-902 mein hoon. Aunty ne khaana kha liya. B-901 wale dopahar aur raat ka khaana denge. Unki beti Pune se kal aane ki koshish kar rahi hai. Lambi dekhbhaal ka intezaam abhi nahi hua.',
+        translation: '“I’m at B-902. Aunty has eaten. The B-901 family will bring lunch and dinner. Her daughter in Pune is trying to get here tomorrow. Longer-term care isn’t arranged yet.”',
+        flat: 'B-902',
+        hint: 'Step 11. Progress, not an outcome: her care isn’t settled, so the case stays open.'
       })
     },
     {
       id: 'pairUpdate',
+      label: 'Nisha and Imran: second visit to C-804',
+      step: 12,
       delay: STEP,
-      cond: (s) => {
-        const f = s.flats['C-804'];
-        const t = f && openTaskIn(s, f);
-        return !!(t && t.type === 'welfare' && t.accept === 'accepted');
-      },
-      build: (s) => ({
-        from: openTaskIn(s, s.flats['C-804']).owner,
-        channel: 'WhatsApp, wardens → desk',
-        text: 'C-804: dobara gaye — bell bajayi, darwaza khatkhataya, phone kiya. Koi jawab nahi. Padosi ne kal shaam se nahi dekha. Humne darwaza nahi khola.',
-        translation: '“C-804: went again — rang, knocked, phoned. No answer. The neighbour hasn’t seen her since yesterday evening. We didn’t open the door.”',
+      expect: 'Arrives 15 demo-minutes after the pair accepts.',
+      cond: (s) => acceptedOn(s, 'C-804', /\+/) && !!caseIn(s, s.flats['C-804']),
+      build: () => ({
+        from: 'Nisha (D-503) + Imran (C-601), volunteers',
+        channel: 'WhatsApp, volunteers to desk',
+        text: 'C-804: dobara gaye. Bell bajayi, darwaza khatkhataya, phone kiya. Koi jawab nahi. Padosi ne kal shaam se nahi dekha. Humne darwaza nahi khola.',
+        translation: '“C-804: went again. Rang, knocked, phoned. No answer. The neighbour hasn’t seen her since yesterday evening. We didn’t open the door.”',
         flat: 'C-804',
-        hint: 'Record “no answer” for their visit, then “Record contact…” with the police. Even an acknowledged call is not an outcome: the case stays open with a follow-up.'
+        hint: 'Step 12. Record the no answer, then record your own call to the police.'
+      })
+    },
+    {
+      id: 'd502',
+      label: 'D-501 resident: about D-502',
+      step: 13,
+      delay: 0,
+      expect: 'Arrives at 10:00.',
+      cond: (s) => s.clock >= START + 60 && !!s.flats['D-502'] && s.flats['D-502'].status === 'confirmed',
+      build: () => ({
+        from: 'Resident of D-501, society WhatsApp group',
+        channel: 'WhatsApp group',
+        text: 'D-502 wali aunty ki BP ki dawai khatam ho gayi hai. Market ka chemist kal se nahi khula. Kal se dawai nahi li.',
+        translation: '“The lady in D-502 has run out of her blood-pressure medicine. The market chemist hasn’t opened since yesterday. She hasn’t taken it since yesterday.”',
+        flat: 'D-502',
+        hint: 'Step 13. A new concern at a household that was already confirmed at 09:00.'
+      })
+    },
+    {
+      id: 'nishaYes',
+      label: 'Nisha: reply',
+      step: 13,
+      delay: 0,
+      expect: 'Arrives as soon as you assign the D-502 visit.',
+      cond: (s) => pendingOn(s, 'D-502', /^nisha \(d-503\)$/i),
+      build: () => ({
+        from: 'Nisha (D-503), volunteer',
+        channel: 'Phone call to the desk',
+        text: 'Haan. Sector 14 wala chemist shayad khula hai, main dekh kar aati hoon.',
+        translation: '“Yes. The chemist in Sector 14 may be open; I’ll go and see.”',
+        flat: 'D-502',
+        hint: 'Step 13. Record her YES (Phone call).'
+      })
+    },
+    {
+      id: 'guardfix',
+      label: 'Ramesh: B-203 correction',
+      step: 16,
+      delay: 0,
+      expect: 'Arrives at 10:00.',
+      cond: (s) => s.clock >= START + 60 && !!s.flats['B-203'] && hasEventIn(s, 'B-203', 'status', /guard/i),
+      build: () => ({
+        from: 'Ramesh, guard room',
+        channel: 'Intercom, guard to desk',
+        text: 'Sorry sir, list mein galti se B-203 likh diya tha, woh B-302 tha. B-203 se baat nahi hui.',
+        translation: '“Sorry, I wrote B-203 on the list by mistake: it was B-302. I didn’t speak to B-203.”',
+        flat: 'B-203',
+        hint: 'Step 16. Correct B-203 (the history keeps both entries), then confirm B-302.'
+      })
+    },
+    {
+      id: 'meenaLate',
+      label: 'Meena: running late',
+      step: 14,
+      delay: 0,
+      expect: 'Arrives once Meena’s deadline has passed (10:15 in the walkthrough).',
+      cond: (s) => tasksOf(s, /^meena/i).some((t) => t.accept === 'accepted' && s.clock > t.due),
+      build: (s) => {
+        const ts = tasksOf(s, /^meena/i).filter((t) => t.type === 'check').sort((a, b) => cmpUnitIn(s, a.flatId, b.flatId));
+        const done = ts.slice(0, Math.max(0, ts.length - 6));
+        const left = ts.length - done.length;
+        const lines = done.map((t) => (t.flatId === 'D-901' ? `${t.flatId},OK,PHONE` : `${t.flatId},OK,VISIT`));
+        return Object.assign({
+          from: 'Meena (D-204), floor warden',
+          channel: 'WhatsApp, warden to desk',
+          text: `Thodi der ho gayi. ${done.length} flats ho gaye (neeche), ${left} baaki hain. Lift ruk ruk ke chal rahi hai. 15 minute aur do.`,
+          translation: `“Sorry, running late. ${done.length} flats done (below), ${left} left. The lift keeps stopping. Give me 15 more minutes.”`,
+          reporter: 'Meena (D-204)',
+          hint: 'Step 14. Apply her lines, then extend her remaining tasks with her reason.'
+        }, lines.length ? { lines: lines.join('\n'), lineCount: lines.length } : {});
+      }
+    },
+    {
+      id: 'auntArrives',
+      label: 'Dr. Kavita: the aunt has arrived',
+      step: 15,
+      delay: 30,
+      expect: 'Arrives 30 demo-minutes after Kavita’s interim update (10:15 in the walkthrough).',
+      cond: (s) => {
+        const c = caseIn(s, s.flats['C-702']);
+        return !!(c && c.updates.length > 0);
+      },
+      build: () => ({
+        from: 'Dr. Kavita (A-201), volunteer',
+        channel: 'Phone call to the desk',
+        text: 'Bua aa gayi hain aur yahin rahengi. Bachchi unke saath hai, dono theek hain. Maine dono ko saath dekha hai. Ab main ghar ja rahi hoon.',
+        translation: '“The aunt has arrived and will stay here. The girl is with her; both are fine. I’ve seen them together. I’m heading home now.”',
+        flat: 'C-702',
+        hint: 'Step 15. An adult is now responsible in the flat, and a volunteer saw it.'
       })
     },
     {
       id: 'son804',
-      delay: STEP,
+      label: 'Son of the C-804 resident: phone call',
+      step: 15,
+      delay: 30,
+      expect: 'Arrives 30 demo-minutes after you record the police call (10:15 in the walkthrough).',
       cond: (s) => {
         const c = caseIn(s, s.flats['C-804']);
         return !!(c && c.contacts.length);
@@ -380,66 +566,32 @@
       build: () => ({
         from: 'Caller on the desk phone',
         channel: 'Desk phone',
-        text: 'Main C-804 wali aunty ka beta bol raha hoon. Mummy mere paas Faridabad mein hain, bilkul theek. Kal shaam hi aa gayi thi — abhi unse baat karke phone kar raha hoon.',
-        translation: '“This is the son of the lady in C-804. Mum is with me in Faridabad, perfectly fine. She came over yesterday evening — I’m calling right after speaking to her.”',
+        text: 'Main C-804 wali aunty ka beta bol raha hoon. Mummy kal dopahar se mere paas Faridabad mein hain, unka phone ghar par reh gaya. Abhi unse baat karke phone kar raha hoon. Didi ko pata nahi tha.',
+        translation: '“I’m the son of the lady in C-804. Mum has been with me in Faridabad since yesterday afternoon; her phone was left at home. I’m calling right after speaking to her. My sister didn’t know.”',
         flat: 'C-804',
-        hint: 'Close the case: Resident located elsewhere and safe, evidence “Spoke to family”. The household stays Unconfirmed until you record it separately (Confirm — away / vacant, source: son’s call). Tell the police yourself.'
+        hint: 'Step 15. New information that replaces the earlier worry. Record the outcome and the household separately.'
       })
     },
     {
-      id: 'guardfix',
-      delay: STEP,
-      cond: (s) => {
-        const f = s.flats['B-203'];
-        return !!(f && f.status === 'confirmed' && f.basis && /guard/i.test(f.basis.by || ''));
-      },
-      build: () => ({
-        from: 'Ramesh · guard room',
-        channel: 'Intercom',
-        text: 'Sorry sir, list mein galti se B-203 likh diya tha — woh B-302 tha. B-203 se baat nahi hui.',
-        translation: '“Sorry, I wrote B-203 on the list by mistake: it was B-302. I didn’t speak to B-203.”',
-        flat: 'B-203',
-        hint: 'Open B-203 → “Correct household status…” (back to Unconfirmed, with a reason). Then confirm B-302: adult reached via Intercom, reported by the guard room.'
-      })
-    },
-    {
-      id: 'meenaYes',
+      id: 'arjunMore',
+      label: 'Arjun: reply',
+      step: 17,
       delay: 0,
-      cond: (s) => pendingOf(s, /^meena/i).length > 0,
-      build: (s) => ({
-        from: `${pendingOf(s, /^meena/i)[0].owner} · floor warden`,
-        channel: 'WhatsApp, warden → desk',
-        text: 'YES, Tower D ki upar wali manzilein main dekh leti hoon.',
-        translation: '“YES, I’ll take the upper floors of Tower D.”',
-        hint: 'Record her acceptance. Then advance the clock and watch her deadline: “Due now”, then “Overdue” — still her task.'
-      })
-    },
-    {
-      id: 'meenaLate',
-      delay: 0,
-      cond: (s) => tasksOf(s, /^meena/i).some((t) => t.accept === 'accepted' && s.clock >= t.due),
-      build: (s) => ({
-        from: `${tasksOf(s, /^meena/i)[0].owner} · floor warden`,
-        channel: 'WhatsApp, warden → desk',
-        text: 'Thodi der ho gayi — 4–5 flats baaki hain, 15 minute aur lagenge.',
-        translation: '“Running a bit late — 4 or 5 flats left; I need 15 more minutes.”',
-        hint: 'Her tasks keep her as owner. Extend the deadline with this reason, record a check-in, or reassign.'
-      })
-    },
-    {
-      id: 'd502',
-      delay: 0,
-      cond: (s) => s.clock >= START + 60 && !!s.flats['D-502'] && s.flats['D-502'].status === 'confirmed' && !caseIn(s, s.flats['D-502']),
-      build: () => ({
-        from: 'Resident of D-501 · society WhatsApp group',
-        channel: 'WhatsApp group',
-        text: 'D-502 wali aunty ki BP ki dawai khatam ho gayi hai, kal se nahi li.',
-        translation: '“The lady in D-502 has run out of her blood-pressure medicine; she hasn’t taken it since yesterday.”',
-        flat: 'D-502',
-        hint: 'D-502’s household is already confirmed. Report a welfare concern anyway (Essentials; set the priority yourself). The household stays Confirmed.'
-      })
+      expect: 'Arrives as soon as you assign Arjun the remaining flats.',
+      cond: (s) => s.clock >= START + 60 && pendingOf(s, /^arjun/i).length > 0,
+      build: (s) => {
+        const n = pendingOf(s, /^arjun/i).length;
+        return {
+          from: 'Arjun (C-304), floor warden',
+          channel: 'WhatsApp, warden to desk',
+          text: `YES, ye ${n} bhi dekh leta hoon. Pehle B-704 jaunga.`,
+          translation: `“YES, I’ll take these ${n} as well. I’ll go to B-704 first.”`,
+          hint: 'Step 17. Record his YES.'
+        };
+      }
     }
   ];
+  const specOf = (id) => MSG_SPECS.find((sp) => sp.id === id);
 
   // ── State ──────────────────────────────────────────────────────────────────
   function defaultSettings() {
@@ -524,6 +676,9 @@
     revealCase: false,
     collapsed: { 6: true },
     guideOpen: true,
+    stepsOpen: false,
+    inboxOpen: typeof window !== 'undefined' ? window.innerWidth > 900 : true,
+    msgOpen: new Set(),
     lastFocus: null,
     lastFocusModal: null
   };
@@ -544,6 +699,10 @@
   function hasEventIn(s, flat, kind, re) {
     return s.events.some((e) => e.flatId === flat && e.kind === kind && (!re || re.test(e.text)));
   }
+  const tasksAll = (s, flat) => Object.values(s.tasks).filter((t) => t.flatId === flat);
+  const acceptedOn = (s, flat, re) => tasksAll(s, flat).some((t) => t.accept === 'accepted' && (!re || re.test(t.owner)));
+  const pendingOn = (s, flat, re) => tasksAll(s, flat).some((t) => t.status === 'open' && t.accept === 'pending' && (!re || re.test(t.owner)));
+  const caseAny = (s, flat) => Object.values(s.cases).filter((c) => c.flatId === flat).pop() || null;
   const openTask = (f) => openTaskIn(state, f);
   const caseOf = (f) => caseIn(state, f);
   // A deadline "by 09:45" includes 09:45: upcoming before it, "due now" at it, overdue after it.
@@ -578,7 +737,7 @@
   function basisText(b) {
     if (!b) return '';
     if (b.kind === 'adult') return `adult reached via ${CHANNEL[b.channel] || b.channel}${b.fromBatch ? ' (batch setting)' : ''}, reported by ${b.by}`;
-    if (b.kind === 'away') return `away / vacant — source: ${b.source}, recorded by ${b.by}`;
+    if (b.kind === 'away') return `away / vacant (source: ${b.source}), recorded by ${b.by}`;
     return '';
   }
   const dueLabel = (t) => {
@@ -667,12 +826,12 @@
     const f = state.flats[id];
     if (caseOf(f)) return { error: `${id} already has an open welfare case. Add an update to it instead.` };
     const t = openTask(f);
-    if (t) closeTask(t, 'Welfare concern reported — needs a helper');
+    if (t) closeTask(t, 'Welfare concern reported: needs a helper');
     const cid = `W${state.seq++}`;
     const pr = priority || 'unknown';
     state.cases[cid] = { id: cid, flatId: id, concern, priority: pr, source, note: note || '', openedAt: state.clock, status: 'open', stage: 'open', updates: [], contacts: [], outcome: null, closedAt: null, reopened: [] };
     f.caseId = cid;
-    log(id, 'welfare', `Welfare case opened. Household stays ${HOUSEHOLD[f.status].en}. Source: ${source}. Priority: ${PRIORITY[pr]}.${t ? ` ${t.owner}’s ${TASK_TYPE[t.type].toLowerCase()} closed.` : ''} Needs a helper.`, '', `Concern: ${CONCERN[concern]}${note ? ` — ${note}` : ''}`);
+    log(id, 'welfare', `Welfare case opened. Household stays ${HOUSEHOLD[f.status].en}. Source: ${source}. Priority: ${PRIORITY[pr]}.${t ? ` ${t.owner}’s ${TASK_TYPE[t.type].toLowerCase()} closed.` : ''} Needs a helper.`, '', `Concern: ${CONCERN[concern]}${note ? ` (${note})` : ''}`);
     return { ok: true };
   }
 
@@ -792,7 +951,7 @@
       t = createTask(id, 'followup', followOwner, followDue);
       next = ` Follow-up → ${followOwner}, deadline ${hhmm(followDue)}${t.accept === 'accepted' ? ' (accepted)' : ' (awaiting acceptance)'}.`;
     } else next = t ? ` Next step stays with ${t.owner} (${dueLabel(t)}).` : '';
-    log(id, 'case', `Contact recorded with ${who}: ${CONTACT_RESULT[result]}${recipient ? ` — ${recipient}` : ''}${reference ? `, ref ${reference}` : ''}. Khairiyat placed no call. Case stays open: ${STAGE[c.stage]}.${next}`);
+    log(id, 'case', `Contact recorded with ${who}: ${CONTACT_RESULT[result]}${recipient ? ` (${recipient})` : ''}${reference ? `, ref ${reference}` : ''}. Khairiyat placed no call. Case stays open: ${STAGE[c.stage]}.${next}`);
     return { ok: true };
   }
 
@@ -811,7 +970,7 @@
     c.closedAt = state.clock;
     f.caseId = null;
     f.lastCaseId = c.id;
-    log(id, 'case', `Welfare case closed — ${OUTCOME[outcome].label}. Evidence: ${EVIDENCE[evidence]}. Recorded by ${by}. Household status unchanged: ${HOUSEHOLD[f.status].en}.${f.status === 'unconfirmed' ? ' The household still needs to be accounted for separately.' : ''}`, '', detail);
+    log(id, 'case', `Welfare case closed: ${OUTCOME[outcome].label}. Evidence: ${EVIDENCE[evidence]}. Recorded by ${by}. Household status unchanged: ${HOUSEHOLD[f.status].en}.${f.status === 'unconfirmed' ? ' The household still needs to be accounted for separately.' : ''}`, '', detail);
     return { ok: true, unconfirmed: f.status === 'unconfirmed' };
   }
 
@@ -836,7 +995,7 @@
     const c = f.lastCaseId && state.cases[f.lastCaseId];
     if (!c) return { error: 'No earlier case to reopen.' };
     c.reopened.push({ at: state.clock, reason, previous: c.outcome });
-    const prev = c.outcome ? OUTCOME[c.outcome.type].label : '—';
+    const prev = c.outcome ? OUTCOME[c.outcome.type].label : 'none';
     c.status = 'open';
     c.outcome = null;
     c.closedAt = null;
@@ -859,7 +1018,7 @@
     const f = state.flats[id];
     const changes = [];
     [['building', building], ['floor', floor], ['note', note]].forEach(([k, v]) => {
-      if ((f[k] || '') !== v) { changes.push(`${k} “${f[k] || '—'}” → “${v || '—'}”`); f[k] = v; }
+      if ((f[k] || '') !== v) { changes.push(`${k} “${f[k] || 'empty'}” → “${v || 'empty'}”`); f[k] = v; }
     });
     if (!changes.length) return { error: 'Nothing changed.' };
     state.order.sort(cmpUnit);
@@ -915,7 +1074,7 @@
         const alt = findUnit(unitTxt.replace(/[oO]/g, '0'));
         row.msg = qualified.length
           ? `“${unitTxt}” is ambiguous in this register: use ${qualified.join(' or ')}.`
-          : `Unknown unit “${unitTxt}”: not in the register.${alt ? ` Did you mean ${alt}? (a letter O typed instead of a zero) — not changed automatically.` : ''}`;
+          : `Unknown unit “${unitTxt}”: not in the register.${alt ? ` Did you mean ${alt}? (A letter O typed instead of a zero.) It was not changed automatically.` : ''}`;
         return;
       }
       row.flat = key;
@@ -945,7 +1104,7 @@
         row.level = c ? 'okwarn' : 'ok';
         row.channel = ch;
         row.fromBatch = fromBatch;
-        row.msg = `Household → Confirmed · adult reached via ${CHANNEL[ch]}${fromBatch ? ' (channel from batch setting)' : ''} · reported by ${by || '—'}${c ? ' · the open welfare case stays open' : ''}`;
+        row.msg = `Household → Confirmed · adult reached via ${CHANNEL[ch]}${fromBatch ? ' (channel from batch setting)' : ''} · reported by ${by || 'not stated'}${c ? ' · the open welfare case stays open' : ''}`;
       } else if (code === 'AWAY') {
         if (!detail) { row.msg = 'AWAY needs a source, e.g. “C-803,AWAY,family phoned warden”.'; return; }
         if (detail.length > 40) { row.msg = 'Source is longer than 40 characters.'; return; }
@@ -989,7 +1148,10 @@
     if (applied) {
       const bc = batchChannel && batchChannel !== 'REQUIRE' ? ` Batch channel for OK lines without one: ${CHANNEL[batchChannel]}.` : '';
       log(null, 'bulk', `Bulk update from ${by}: ${plural(applied, 'line')} applied, ${plural(noop.length, 'line')} with no change, ${plural(bad.length, 'line')} not applied (errors).${bc}`);
-      if (/guard/i.test(by)) state.flags.guardApplied = true;
+      if (/guard/i.test(by)) {
+        state.flags.guardApplied = true;
+        if (rows.some((r) => r.fromBatch && (r.level === 'ok' || r.level === 'okwarn'))) state.flags.guardBatch = batchChannel;
+      }
     }
     return { applied, bad, noop };
   }
@@ -1110,17 +1272,17 @@
       const due = Math.min(...checks.map((t) => t.due));
       L.push(`Household check (हालचाल) for ${owner}: ${plural(checks.length, 'flat')}, please report by ${hhmm(due)}.`);
       for (let i = 0; i < checks.length; i += 8) L.push(checks.slice(i, i + 8).map((t) => t.flatId).join(', '));
-      L.push('', 'When you check, reply with one line per flat:', 'FLAT,OK,VISIT — you spoke to an adult at the door', 'FLAT,OK,PHONE — you spoke to an adult by phone', 'FLAT,NOANS — no answer', 'FLAT,AWAY,who told you', 'FLAT,HELP,CHILD / ADULT / MEDICAL / ESSENTIALS');
+      L.push('', 'When you check, reply with one line per flat:', 'FLAT,OK,VISIT if you spoke to an adult at the door', 'FLAT,OK,PHONE if you spoke to an adult by phone', 'FLAT,NOANS if nobody answered', 'FLAT,AWAY,who told you', 'FLAT,HELP,CHILD / ADULT / MEDICAL / ESSENTIALS');
     }
     visits.forEach((t) => {
       const c = caseOf(state.flats[t.flatId]);
-      L.push('', `Welfare visit for ${owner}: ${t.flatId} — ${c ? CONCERN[c.concern] : 'welfare concern'} (as reported). Please go by ${hhmm(t.due)} only if it is safe for you, and tell the desk what you find.`);
+      L.push('', `Welfare visit for ${owner}: ${t.flatId}, ${c ? CONCERN[c.concern].toLowerCase() : 'welfare concern'} (as reported). Please go by ${hhmm(t.due)} only if it is safe for you, and tell the desk what you find.`);
     });
-    follows.forEach((t) => L.push('', `Follow-up for ${owner}: ${t.flatId} — please follow up by ${hhmm(t.due)} and tell the desk what you find.`));
+    follows.forEach((t) => L.push('', `Follow-up for ${owner}: ${t.flatId}. Please follow up by ${hhmm(t.due)} and tell the desk what you find.`));
     if (tasks.some((t) => t.accept === 'pending')) L.push('', 'Please reply YES if you can take this on, or NO if you can’t.');
     L.push(
       '',
-      'Safety: knock or call only. Don’t enter any home or force a door, and don’t stay anywhere you feel unsafe — leave and tell the desk. If anyone may be in immediate danger, call emergency services directly first; don’t wait for the desk.',
+      'Safety: knock or call only. Don’t enter any home or force a door, and don’t stay anywhere you feel unsafe: leave and tell the desk. If anyone may be in immediate danger, call emergency services directly first; don’t wait for the desk.',
       '“No answer” isn’t proof of anything: just report it.',
       `Desk: ${state.settings.desk}. Please don’t forward this message.`
     );
@@ -1147,7 +1309,7 @@
       `Welfare follow-ups open: ${w}.`,
       '',
       `If nobody has reached your household yet, please call ${state.settings.guard} or the desk on ${state.settings.desk}, or tell your floor warden.`,
-      '“Not yet confirmed” only means we haven’t reached your household yet. “Confirmed” means we reached someone in the household — not that every person is safe.',
+      '“Not yet confirmed” only means we haven’t reached your household yet. “Confirmed” means we reached someone in the household, not that every person is safe.',
       'If anyone may be in immediate danger, call emergency services directly first.',
       '',
       'Totals only: this update never includes flat numbers, names or details.'
@@ -1182,7 +1344,7 @@
     const st = stats();
     if (st.gaps !== 0) return false;
     state.coverAt = state.clock;
-    log(null, 'milestone', `Next-step coverage first reached at ${hhmm(state.clock)}, ${dur(state.clock - state.startedAt)} after the roll-call started: every unresolved flat had an accepted next step that wasn’t overdue. Not a safety measure — ${plural(st.unconfirmed, 'household')} unconfirmed and ${plural(st.cases, 'welfare case')} open at that moment. Coverage can fall again when deadlines pass.`);
+    log(null, 'milestone', `Next-step coverage first reached at ${hhmm(state.clock)}, ${dur(state.clock - state.startedAt)} after the roll-call started: every unresolved flat had an accepted next step that wasn’t overdue. Not a safety measure: ${plural(st.unconfirmed, 'household')} unconfirmed and ${plural(st.cases, 'welfare case')} open at that moment. Coverage can fall again when deadlines pass.`);
     return true;
   }
   function commit() {
@@ -1219,28 +1381,26 @@
     const has = state.order.length > 0;
     $('#app-header').innerHTML = `
       <div class="brand">
-        <div class="logo" aria-hidden="true">ख़</div>
-        <div>
-          <div class="brand-name">Khairiyat <span lang="hi">ख़ैरियत</span></div>
-          <div class="brand-sub">Roll-call desk · ${esc(state.settings.society)} <span class="tag">prototype</span></div>
-        </div>
+        <div class="brand-name">Khairiyat <span lang="hi" class="hi">ख़ैरियत</span></div>
+        <div class="brand-sub">Roll-call desk · ${esc(state.settings.society)}</div>
       </div>
       <div class="clock" role="group" aria-label="Demo clock">
-        <div>
-          <div class="clock-label">Demo clock · day after the Snap</div>
-          <div class="clock-time">${hhmm(state.clock)}</div>
-          ${has ? `<div class="clock-sub">Roll-call since ${hhmm(state.startedAt)} · ${dur(state.clock - state.startedAt)}</div>` : ''}
-        </div>
-        <button class="btn btn-clock" data-action="advance" title="Move the demo clock forward 15 minutes">+15 min</button>
+        <span class="clock-label">Demo clock</span>
+        <span class="clock-time">${hhmm(state.clock)}</span>
+        ${has ? `<span class="clock-sub">since ${hhmm(state.startedAt)}</span>` : ''}
+        <button class="btn btn-sm" data-action="advance" title="Move the demo clock forward 15 minutes">+15 min</button>
       </div>
       <div class="header-actions">
-        <button class="btn btn-head" data-action="open-import">Import register</button>
-        <button class="btn btn-head" data-action="open-bulk" ${has ? '' : 'disabled'}>Bulk update</button>
-        <button class="btn btn-head" data-action="open-export" ${has ? '' : 'disabled'}>Export CSV</button>
-        <button class="btn btn-head" data-action="open-settings">Settings</button>
+        <button class="btn btn-sm" data-action="open-bulk" ${has ? '' : 'disabled'}>Bulk update</button>
         <details class="menu">
-          <summary class="btn btn-head">Demo &amp; data</summary>
+          <summary class="btn btn-sm">More</summary>
           <div class="menu-pop">
+            <button data-action="open-import">Import register</button>
+            <button data-action="open-export" ${has ? '' : 'disabled'}>Export CSV</button>
+            <button data-action="open-handover" ${has ? '' : 'disabled'}>Handover summary</button>
+            <button data-action="open-scenario">About this scenario</button>
+            <button data-action="open-settings">Settings</button>
+            <hr>
             <button data-action="ask-reset">Reset demo (empty register)</button>
             <button data-action="ask-reset-sample">Reset demo, Neelgiri register loaded</button>
             <button data-action="ask-delete" class="danger">Delete all data…</button>
@@ -1249,28 +1409,23 @@
       </div>`;
   }
 
-  function kpi(label, hi, value, tone, note, id) {
-    return `<div class="kpi tone-${tone}" ${id ? `data-kpi="${id}"` : ''}><div class="kpi-label">${label} <span lang="hi">· ${hi}</span></div><div class="kpi-value">${value}</div><div class="kpi-note">${note}</div></div>`;
-  }
+  // One grouped summary instead of six equal cards: what needs attention is the last group.
   function renderKpis() {
     if (!state.order.length) {
-      $('#kpis').innerHTML = '<div class="kpi kpi-empty">No register loaded. Import the society’s register to start the roll-call.</div>';
+      $('#kpis').innerHTML = '<p class="sum-empty">No register loaded yet. Import the society’s register to start the roll-call.</p>';
       return;
     }
     const st = stats();
+    const n = (v, tone) => `<b class="num${v && tone ? ` ${tone}` : ''}">${v}</b>`;
     const cover = st.unresolved ? `${st.covered} of ${st.unresolved} unresolved flats have an accepted next step that isn’t overdue` : 'No unresolved flats';
-    $('#kpis').innerHTML = [
-      kpi('Households confirmed', 'पुष्टि हुई', `${st.confirmed}<small>/${st.total}</small>`, 'ok', 'Someone in the household reached, or away / vacant confirmed. Not a check on every person.', 'confirmed'),
-      kpi('Households unconfirmed', 'पुष्टि बाकी', st.unconfirmed, 'unc', 'Not reached yet. Not evidence that anyone vanished.', 'unconfirmed'),
-      kpi('Open welfare cases', 'हालचाल जाँच', st.cases, st.cases ? 'wel' : 'muted', 'Open until an outcome is recorded with its evidence.', 'cases'),
-      kpi('Needs an owner', 'बिना ज़िम्मेदार', st.none, st.none ? 'danger' : 'muted', 'Unresolved, and nobody has been asked.', 'none'),
-      kpi('Awaiting acceptance', 'स्वीकृति बाकी', st.pending, st.pending ? 'warn' : 'muted', 'Assigned but not accepted: not counted as covered.', 'pending'),
-      kpi('Overdue', 'समय सीमा पार', st.overdue, st.overdue ? 'danger' : 'muted', `Past the deadline; the owner is unchanged.${st.dueNow ? ` <strong>${st.dueNow} due now.</strong>` : ''}`, 'overdue')
-    ].join('') + `<div class="coverage-bar" role="status">
-        <span><strong>Next-step coverage:</strong> ${cover}.</span>
-        <span>${state.coverAt != null ? `Full coverage first reached at ${hhmm(state.coverAt)} (after ${dur(state.coverAt - state.startedAt)}).` : 'Full coverage not reached yet.'}</span>
-        <span class="muted">A coordination measure only: it doesn’t show that anyone is safe.</span>
-      </div>`;
+    $('#kpis').innerHTML = `
+      <div class="sum-group"><h2 class="sum-h">Households <span lang="hi">घर</span></h2>
+        <p><span data-kpi="confirmed">${n(st.confirmed)} confirmed</span><span class="sep" aria-hidden="true">·</span><span data-kpi="unconfirmed">${n(st.unconfirmed)} unconfirmed</span> <span class="muted">of ${st.total}</span></p></div>
+      <div class="sum-group"><h2 class="sum-h">Welfare cases <span lang="hi">हालचाल</span></h2>
+        <p><span data-kpi="cases">${n(st.cases, 'wel')} open</span></p></div>
+      <div class="sum-group attention"><h2 class="sum-h">Next steps needing attention</h2>
+        <p><span data-kpi="none">${n(st.none, 'danger')} need an owner</span><span class="sep" aria-hidden="true">·</span><span data-kpi="pending">${n(st.pending, 'warn')} awaiting acceptance</span><span class="sep" aria-hidden="true">·</span><span data-kpi="overdue">${n(st.overdue, 'danger')} overdue</span><span class="sep" aria-hidden="true">·</span><span data-kpi="due">${n(st.dueNow, 'warn')} due now</span></p></div>
+      <p class="coverage-line" role="status"><span><b>Next-step coverage:</b> ${cover}.</span> <span>${state.coverAt != null ? `Full coverage first reached at ${hhmm(state.coverAt)}.` : 'Full coverage not reached yet.'}</span> <span class="muted">A coordination measure, not a safety measure.</span></p>`;
   }
 
   // ── Rendering: main tabs ───────────────────────────────────────────────────
@@ -1299,11 +1454,10 @@
 
   function emptyNoRegister() {
     return `<div class="empty">
-      <div class="empty-icon" aria-hidden="true">▦</div>
       <h2>No register yet</h2>
       <p>Khairiyat starts from the society’s own list of units: flats, villas, shops, anything with an identifier. Import it, and every household starts as <strong>Unconfirmed · पुष्टि बाकी</strong>, which only means nobody has reached it yet.</p>
-      <div class="empty-actions"><button class="btn btn-primary" data-action="open-import">Import the register</button></div>
-      <p class="muted small">The scripted demo uses a fictional 160-flat register for Neelgiri Apartments. Two other fictional registers show irregular buildings and independent homes.</p>
+      <div class="empty-actions"><button class="btn btn-primary" data-action="open-import">Import the register</button> <button class="btn" data-action="open-scenario">About this scenario</button></div>
+      <p class="muted small">The walkthrough uses a fictional 160-flat register for Neelgiri Apartments. Two other fictional registers show irregular buildings and independent homes.</p>
     </div>`;
   }
   const emptyLine = (t) => `<p class="empty-line">${t}</p>`;
@@ -1353,13 +1507,26 @@
   function qGroup(n, title, tone, count, body, help, extraHead) {
     const collapsed = !!ui.collapsed[n];
     return `<section class="qgroup tone-${tone}${count ? '' : ' is-empty'}" data-group="${n}">
-      <button class="qhead" data-action="toggle-group" data-group="${n}" aria-expanded="${!collapsed}">
-        <span class="qnum">${n}</span><span class="qtitle">${title}${extraHead ? ` <span class="qextra">${extraHead}</span>` : ''}</span><span class="qcount">${count}</span><span class="qcaret" aria-hidden="true">${collapsed ? '▸' : '▾'}</span>
-      </button>
+      <h3 class="qh"><button class="qhead" data-action="toggle-group" data-group="${n}" aria-expanded="${!collapsed}">
+        <span class="qcaret" aria-hidden="true">${collapsed ? '▸' : '▾'}</span><span class="qtitle">${title}${extraHead ? ` <span class="qextra">${extraHead}</span>` : ''}</span><span class="qcount">${count}</span>
+      </button></h3>
       ${collapsed ? '' : `<div class="qbody">${help ? `<p class="qhelp">${help}</p>` : ''}${body}</div>`}
     </section>`;
   }
-  const stageShort = { open: 'No handoff yet', contacted: 'Contact attempted', acknowledged: 'Handoff agreed — unconfirmed' };
+  const stageShort = { open: 'No handoff yet', contacted: 'Contact attempted', acknowledged: 'Handoff agreed, not confirmed' };
+
+  // The coordinator's first question: what needs my attention next?
+  function nextPriority(q) {
+    if (q.welfare.length) {
+      const x = q.welfare[0];
+      const what = x.cov === 'none' ? 'it needs a helper' : x.cov === 'pending' ? `${x.t.owner} hasn’t accepted yet` : `${x.t.owner}’s deadline has passed`;
+      return `Welfare case at <b>${esc(x.f.id)}</b> (${esc(PRIORITY[x.c.priority])}): ${esc(what)}. <button class="btn btn-sm btn-primary" data-action="open-flat" data-id="${esc(x.f.id)}">Open ${esc(x.f.id)}</button>`;
+    }
+    if (q.overdue.length) return `${plural(q.overdue.length, 'household check')} overdue (${esc(uniq(q.overdue.map((x) => x.t.owner)).join(', '))}): check in, extend with a reason, or reassign. See <b>Overdue</b> below.`;
+    if (q.none.length) return `${plural(q.none.length, 'household')} with nobody asked to check them. See <b>Needs an owner</b> below.`;
+    if (q.pending.length) return `${plural(q.pending.length, 'assignment')} waiting for a YES or NO. See <b>Awaiting acceptance</b> below.`;
+    return '';
+  }
 
   function welfareRow({ f, t, c, cov }) {
     const detail = ui.hideWelfare ? '<span class="masked">Concern hidden</span>' : esc(CONCERN[c.concern]);
@@ -1393,10 +1560,12 @@
     if (!state.order.length) return emptyNoRegister();
     const q = buildQueue();
     const st = stats();
+    const next = nextPriority(q);
     let h = `<div class="panel-intro">
-      <p>Re-ordered after every change. <strong>Covered</strong> means an accepted owner whose deadline hasn’t passed. Unaccepted assignments, missed deadlines and unowned flats are listed separately. <strong>“Unconfirmed” and “no answer” are not evidence that anyone has vanished.</strong></p>
+      <p>Most urgent first, re-ordered after every change. <strong>Covered</strong> means someone accepted and the deadline hasn’t passed. “Unconfirmed” and “no answer” are not evidence that anyone has vanished.</p>
       <label class="toggle"><input type="checkbox" id="hide-welfare" ${ui.hideWelfare ? 'checked' : ''}> Hide welfare details on screen</label>
-    </div>`;
+    </div>
+    <p class="next-up${next ? '' : ' calm'}"><span class="next-label">Next priority</span> ${next || (st.unresolved ? 'Nothing needs action right now: every unresolved item has an accepted next step within its deadline.' : 'Nothing outstanding.')}</p>`;
     if (st.gaps === 0) h += coverageBanner(st);
 
     h += qGroup(1, 'Welfare cases needing action', 'danger', q.welfare.length,
@@ -1412,7 +1581,7 @@
         <div class="chips">${items.map((x) => flatChip(x.f.id)).join('')}</div>
       </div>`;
     }).join('');
-    h += qGroup(2, 'Overdue — check with the owner', 'danger', q.overdue.length, g2 || emptyLine('None. No household check has passed its deadline.'),
+    h += qGroup(2, 'Overdue: check with the owner', 'danger', q.overdue.length, g2 || emptyLine('None. No household check has passed its deadline.'),
       q.overdue.length ? 'The deadline has passed but the owner hasn’t changed. Check in, extend with a reason, or reassign. The history keeps every step.' : '');
 
     const blds = clusters(q.none, (x) => x.f.building || 'No building');
@@ -1514,7 +1683,7 @@
       <button class="btn btn-sm btn-ghost" data-action="sel-clear" ${n ? '' : 'disabled'}>Clear</button>
       <span class="sp"></span>
       <button class="btn btn-sm btn-primary" data-action="sel-assign" ${n ? '' : 'disabled'}>Assign follow-up…</button>
-      <button class="btn btn-sm" data-action="sel-away" ${n ? '' : 'disabled'}>Confirm household — away / vacant…</button>
+      <button class="btn btn-sm" data-action="sel-away" ${n ? '' : 'disabled'}>Confirm household: away / vacant…</button>
     </div>`;
   }
 
@@ -1579,19 +1748,19 @@
       const t = openTask(f);
       const cov = coverage(f);
       const c = caseOf(f);
-      const hh = f.status === 'confirmed' ? esc(basisText(f.basis)) : f.attempts ? `No answer ×${f.attempts} (not evidence of anything)` : '—';
-      const wf = c ? `${priorityBadge(c.priority)} ${ui.hideWelfare ? '<span class="masked">Concern hidden</span>' : esc(CONCERN[c.concern])}` : '—';
+      const hh = f.status === 'confirmed' ? esc(basisText(f.basis)) : f.attempts ? `No answer ×${f.attempts} (not evidence of anything)` : '';
+      const wf = c ? `${priorityBadge(c.priority)} ${ui.hideWelfare ? '<span class="masked">Concern hidden</span>' : esc(CONCERN[c.concern])}` : '<span class="muted">No open case</span>';
       const next = cov === 'resolved' ? '<span class="muted">Nothing outstanding</span>'
         : cov === 'none' ? '<span class="text-danger">Needs an owner</span>'
           : `${esc(t.owner)} · ${t.accept === 'accepted' ? 'accepted' : '<span class="text-warn">awaiting acceptance</span>'}`;
       return `<tr class="${cov === 'none' || cov === 'overdue' ? 'row-unowned' : ''}">
         <td class="c-unit">${ui.selecting ? `<input type="checkbox" data-action="row-sel" data-id="${esc(id)}" aria-label="Select ${esc(id)}" ${ui.sel.has(id) ? 'checked' : ''}> ` : ''}<button class="flat-link" data-action="open-flat" data-id="${esc(id)}">${esc(id)}</button></td>
-        <td data-label="Building">${esc(f.building) || '<span class="muted">—</span>'}</td>
-        <td data-label="Floor">${esc(f.floor) || '<span class="muted">—</span>'}</td>
+        <td data-label="Building">${esc(f.building) || '<span class="muted">Not set</span>'}</td>
+        <td data-label="Floor">${esc(f.floor) || '<span class="muted">Not set</span>'}</td>
         <td data-label="Household" class="c-wide">${householdChip(f.status, true)}<div class="small muted">${hh}</div></td>
         <td data-label="Welfare">${wf}</td>
         <td data-label="Next step">${next}</td>
-        <td data-label="Deadline">${t ? dueHtml(t) : '—'}</td>
+        <td data-label="Deadline">${t ? dueHtml(t) : '<span class="muted">No task</span>'}</td>
         <td data-label="Note" class="muted">${esc(f.note)}</td></tr>`;
     }).join('');
     return `<div class="table-wrap"><table class="tbl reg-list"><thead><tr><th>Unit</th><th>Building</th><th>Floor</th><th>Household</th><th>Welfare</th><th>Next step · ज़िम्मेदार</th><th>Deadline · समय सीमा</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -1628,7 +1797,7 @@
           </div>
         </article>`;
       }).join('');
-    return `<div class="panel-intro"><p>Each card is a person’s current load. Assignments are commitments: record whether the person accepted, and watch for loads above the desk’s limit (${limit} open tasks, set in Settings — an adjustable assumption, not a standard). Messages are generated for copying; Khairiyat doesn’t send anything.</p></div><div class="owner-grid">${cards}</div>`;
+    return `<div class="panel-intro"><p>Each card is a person’s current load. Assignments are commitments: record whether the person accepted, and watch for loads above the desk’s limit (${limit} open tasks, set in Settings; an adjustable assumption, not a standard). Messages are generated for copying; Khairiyat doesn’t send anything.</p></div><div class="owner-grid">${cards}</div>`;
   }
 
   // Society update
@@ -1690,148 +1859,512 @@
     const shown = evs.slice(0, 400);
     return `<p class="results-count">${evs.length} ${evs.length === 1 ? 'entry' : 'entries'}${evs.length > shown.length ? `, newest ${shown.length} shown` : ''} · append-only: corrections are new entries</p>
       <div class="table-wrap"><table class="tbl hist"><thead><tr><th>Time</th><th>Unit</th><th>Type</th><th>Entry</th></tr></thead><tbody>
-      ${shown.map((e) => `<tr class="k-${e.kind}"><td class="nowrap">${hhmm(e.t)}</td><td>${e.flatId && state.flats[e.flatId] ? `<button class="flat-link" data-action="open-flat" data-id="${esc(e.flatId)}">${esc(e.flatId)}</button>` : '<span class="muted">—</span>'}</td><td><span class="kind kind-${e.kind}">${KIND_LABEL[e.kind] || e.kind}</span></td><td>${eventText(e)}</td></tr>`).join('')}
+      ${shown.map((e) => `<tr class="k-${e.kind}"><td class="nowrap">${hhmm(e.t)}</td><td>${e.flatId && state.flats[e.flatId] ? `<button class="flat-link" data-action="open-flat" data-id="${esc(e.flatId)}">${esc(e.flatId)}</button>` : '<span class="muted">Society</span>'}</td><td><span class="kind kind-${e.kind}">${KIND_LABEL[e.kind] || e.kind}</span></td><td>${eventText(e)}</td></tr>`).join('')}
       </tbody></table></div>`;
   }
 
-  // ── Rendering: aside (demo guide + desk inbox) ─────────────────────────────
+  // ── Walkthrough (guided sequence) and desk inbox ──────────────────────────
   function selectFor(filters, pred, message) {
     Object.assign(ui, { q: '', fHousehold: 'all', fCase: 'all', fNext: 'all', fBuilding: 'all', view: 'grid' }, filters);
     ui.tab = 'register';
     ui.selecting = true;
     ui.sel = new Set(state.order.filter((id) => pred(id)));
+    if (ui.drawer) ui.drawer = null;
     renderAll();
     toast(`${plural(ui.sel.size, 'unit')} selected. ${message}`);
   }
-  const anyTask = (re) => Object.values(state.tasks).some((t) => re.test(t.owner));
+  const towerFloors = (tower, lo, hi) => (id) => {
+    const f = state.flats[id];
+    const fl = Number(f.floor);
+    return f.building === tower && f.status === 'unconfirmed' && !openTask(f) && fl >= lo && fl <= hi;
+  };
+  const isConfirmed = (s, id) => !!s.flats[id] && s.flats[id].status === 'confirmed';
+  const farhanFlats = (s) => uniq(Object.values(s.tasks).filter((t) => /^farhan/i.test(t.owner)).map((t) => t.flatId));
+  const showTab = (t) => { ui.tab = t; ui.drawer = null; renderAll(); };
+
+  // Each step: what happened, exact actions, what to expect, why it matters, and the conditions
+  // (read from the data, never from button clicks) that mark it complete.
   const GUIDE = [
     {
-      t: 'Import the register',
-      d: 'Import register → Neelgiri sample → Validate. A duplicate C-1004 row and a row with no unit identifier are flagged. Import the other 160.',
-      done: (s) => s.scenario === 'neelgiri',
-      go: () => openModal('import', { sample: 'neelgiri', text: sampleNeelgiriCsv(), society: SAMPLE_SOCIETY })
+      time: '09:00',
+      title: 'Read the situation, then import the register',
+      situation: `It is 9:00 on the morning after the Snap. You are Priya, the RWA secretary, at the clubhouse desk of Neelgiri Apartments (fictional). Nobody yet knows which of the 160 flats have been reached. You start from the society’s own flat register.`,
+      actions: [
+        `Click <b>Import the register</b> in the middle of the screen (or <b>More → Import register</b>).`,
+        `Click the sample button <b>Neelgiri Apartments (regular towers, scripted demo)</b>, then <b>Validate</b>.`,
+        `Read the two flagged rows, then click <b>Import 160 units (skip 2)</b>.`
+      ],
+      expected: `The preview shows 160 valid rows and 2 errors: a duplicate C-1004 row and a row with no unit. After the import, all 160 households show <b>Unconfirmed</b>, and three messages arrive in the <b>Desk inbox</b>.`,
+      why: `Khairiyat starts from the society’s own list and flags problems instead of guessing. “Unconfirmed” only means nobody has reached the household yet.`,
+      checks: [['The Neelgiri register is imported (160 units)', (s) => s.scenario === 'neelgiri']],
+      go: () => openModal('import', {})
     },
     {
-      t: 'Confirm the six vacant flats, with a source',
-      d: 'Select the six flats noted “no residents on record” → Confirm household — away / vacant. The source is the register note, nothing more.',
-      done: (s) => { const noted = s.order.filter((id) => s.flats[id].note); return noted.length > 0 && noted.every((id) => s.flats[id].status === 'confirmed'); },
-      go: () => selectFor({}, (id) => state.flats[id].note && state.flats[id].status === 'unconfirmed', 'Click “Confirm household — away / vacant…”.')
+      time: '09:00',
+      title: 'Confirm the six vacant flats, with a source',
+      situation: `The register notes six flats with no residents on record. Nobody needs to knock on those doors.`,
+      actions: [
+        `Click <b>Show me</b> below. It opens the <b>Unit register</b> and selects the six flats noted “no residents on record”.`,
+        `In the blue selection bar, click <b>Confirm household: away / vacant…</b>`,
+        `Keep the source <code>Register note: no residents on record</code> and click <b>Confirm away / vacant</b>.`
+      ],
+      expected: `<b>Households confirmed</b> rises to 6. Each of the six flats records the register note as its source.`,
+      why: `Every confirmation records where the information came from. The register note is the only source here, so that is all Khairiyat records.`,
+      checks: [['All six flats noted “no residents on record” are confirmed away / vacant, with a source', (s) => {
+        const noted = s.order.filter((id) => s.flats[id].note);
+        return noted.length === 6 && noted.every((id) => s.flats[id].status === 'confirmed' && s.flats[id].basis && s.flats[id].basis.kind === 'away');
+      }]],
+      go: () => selectFor({}, (id) => state.flats[id].note && state.flats[id].status === 'unconfirmed', 'Click “Confirm household: away / vacant…”.')
     },
     {
-      t: 'Guard’s intercom round (batch channel), and A-402 by hand',
-      d: 'Copy the guard’s lines to Bulk update and Validate: lines without a channel are rejected. The guard said every call was on the intercom, so set the batch channel to Intercom and Validate again. Two lines stay wrong. Apply. Then confirm A-402 from the resident’s Hinglish message.',
-      done: (s) => !!s.flags.guardApplied && !!s.flats['A-402'] && s.flats['A-402'].status === 'confirmed',
-      go: () => (state.flags.guardApplied ? openDrawer('A-402') : openBulkFromMsg('guard'))
-    },
-    {
-      t: 'Split Tower C between two wardens',
-      d: 'Tower C’s intercom is down. Assign floors 6–10 to “Arjun (C-304)” and floors 1–5 to “Farhan (B-703)”, each with +45 min. (Try all 38 for one person to see the workload warning.) Both stay “Awaiting acceptance”.',
-      done: () => anyTask(/^arjun/i) && anyTask(/^farhan/i),
+      time: '09:00',
+      title: 'Apply the guard’s intercom round without inventing a channel',
+      situation: `Ramesh in the guard room rang flats through the night. He says every call was on the intercom, but his list doesn’t say so line by line. Two of the society’s five guards have vanished, and Tower C’s intercom panel is down.`,
+      actions: [
+        `In the <b>Desk inbox</b>, on Ramesh’s message, click <b>Copy to bulk update</b>, then <b>Validate</b>. Every OK line is rejected: none names a channel.`,
+        `Set <b>Channel for OK lines that don’t name one</b> to <b>Intercom</b> (Ramesh told you this), then <b>Validate</b> again: 93 lines are valid and 2 are not.`,
+        `Click <b>Apply 93 valid lines</b>. The two wrong lines stay in the box.`,
+        `In the box, change <code>A-1O3</code> to <code>A-103</code> (a zero, not the letter O) and delete the line <code>B-902,HELP</code> (it has no category; Ramesh calls back about it in step 5). Click <b>Validate</b>, <b>Apply 1 valid line</b>, then close the dialog.`
+      ],
+      expected: `100 households confirmed (6 + 93 + A-103). Each of these entries says “Intercom (batch setting)” and “reported by Guard room”.`,
+      why: `Version 1 recorded an OK line without a channel as a door visit. Khairiyat now records only what the reporter said, and flags typos instead of silently correcting them.`,
+      checks: [
+        ['Guard’s lines applied with Intercom chosen as the batch channel', (s) => s.flags.guardBatch === 'INTERCOM'],
+        ['A-103 confirmed after fixing the A-1O3 typo', (s) => isConfirmed(s, 'A-103')]
+      ],
       go: () => {
-        const second = anyTask(/^arjun/i);
-        const [lo, hi] = second ? [1, 5] : [6, 10];
-        selectFor({ fBuilding: 'Tower C' }, (id) => {
-          const f = state.flats[id];
-          const fl = Number(f.floor);
-          return f.building === 'Tower C' && f.status === 'unconfirmed' && !openTask(f) && fl >= lo && fl <= hi;
-        }, `Tower C floors ${lo}–${hi}. Click “Assign follow-up…” and choose ${second ? 'Farhan (B-703)' : 'Arjun (C-304)'}.`);
+        if (!state.flags.guardApplied) { openBulkFromMsg('guard'); return; }
+        openModal('bulk', { by: 'Guard room (intercom round)', batch: 'INTERCOM', text: 'A-1O3,OK\nB-902,HELP' });
       }
     },
     {
-      t: 'Record a YES and a NO, then reassign',
-      d: 'Advance +15 min. Arjun replies YES; Farhan replies NO. Record both (Awaiting acceptance → Record response…). Farhan’s flats return to “Needs an owner”: reassign them to “Rohit (B-501)” with +90 min and record his YES in person.',
-      done: (s) => !!s.flags.acceptRecorded && !!s.flags.declineRecorded && Object.values(s.tasks).some((t) => /^rohit/i.test(t.owner) && t.accept === 'accepted'),
-      go: () => { ui.tab = 'queue'; renderAll(); }
+      time: '09:00',
+      title: 'Residents report for themselves, and a rumour',
+      situation: `Two WhatsApp messages. The resident of A-402 says she and her children are fine, but her husband has been gone since yesterday evening. A resident of B-801 guesses that the B-704 family “probably vanished”.`,
+      actions: [
+        `In the inbox, on the A-402 message, click <b>Open A-402</b>, then <b>Confirm: adult reached…</b>`,
+        `Choose <b>Message from the household</b>, type <code>Resident of A-402</code> in <b>Reported by</b>, tick <b>An adult (18+) in this household was reached</b>, and click <b>Confirm household</b>.`,
+        `Record nothing for B-704. On the B-704 message, click <b>Mark handled</b>.`
+      ],
+      expected: `A-402 shows <b>Household confirmed</b>. Nothing about her husband is recorded anywhere. B-704 stays <b>Unconfirmed</b>.`,
+      why: `“Confirmed” is household-level: it never means everyone linked to the flat is safe, and Khairiyat is not a register of missing people. A neighbour’s guess is not a source, so B-704 keeps waiting for a real check (step 17).`,
+      checks: [
+        ['A-402 confirmed: adult reached, message from the household', (s) => isConfirmed(s, 'A-402') && s.flats['A-402'].basis.channel === 'MESSAGE'],
+        ['B-704 is still Unconfirmed (a rumour is not a source)', (s) => !!s.flats['B-704'] && s.flats['B-704'].status === 'unconfirmed'],
+        ['The B-704 rumour is marked handled in the Desk inbox', (s) => !!(s.msgs.rumour704 && s.msgs.rumour704.handled)]
+      ],
+      go: () => openDrawer('A-402')
     },
     {
-      t: 'Apply Arjun’s reply',
-      d: 'Advance +15 min. Copy Arjun’s reply to Bulk update: the Hinglish line is flagged, not guessed. Apply. C-702 opens a welfare case (priority not yet assessed); C-804 and C-1004 (no answer) need an owner.',
-      done: (s) => Object.values(s.cases).some((c) => c.flatId === 'C-702'),
-      go: () => openBulkFromMsg('arjunReply', 'Arjun’s reply arrives 15 demo-minutes after you record his YES. Advance the clock.')
+      time: '09:00',
+      title: 'An older resident who has lost her carer',
+      situation: `Ramesh calls back about the B-902 line. Mrs Bhalla answered the intercom herself. Her live-in attendant vanished yesterday, she uses a wheelchair, the Tower B lift has stopped because its operator is gone, and she has not eaten since last night.`,
+      actions: [
+        `Click <b>Show me</b> (opens B-902), then <b>Confirm: adult reached…</b> Choose <b>Intercom</b>, type <code>Guard room</code> in <b>Reported by</b>, tick the adult box <i>and</i> <b>They reported someone who may need help</b>. Click <b>Confirm household</b>.`,
+        `The welfare form opens. Choose <b>Adult who can’t manage alone</b>, priority <b>Urgent</b> (your judgement: she is alone and hasn’t eaten), source <code>Guard’s intercom call</code>, then <b>Open welfare case</b>.`,
+        `Click <b>Assign helper…</b>, type <code>Sunita (A-603)</code>, choose <b>+60 min</b>, click <b>Assign 1 unit</b>, then close the message dialog (Khairiyat never sends it).`,
+        `Sunita’s reply arrives at once. Click <b>Record response…</b>, choose <b>YES</b> and <b>Phone call</b>, then <b>Record response</b>.`
+      ],
+      expected: `B-902 shows two separate records: <b>Household confirmed</b> and <b>Welfare case open</b>, with Sunita’s visit accepted and due at 10:00.`,
+      why: `Reaching a household and resolving a welfare concern are different things. Confirming B-902 does not close her case.`,
+      checks: [
+        ['B-902 household confirmed: adult reached via Intercom', (s) => isConfirmed(s, 'B-902') && s.flats['B-902'].basis.channel === 'INTERCOM'],
+        ['A welfare case was opened for B-902', (s) => !!caseAny(s, 'B-902')],
+        ['A helper accepted the B-902 visit', (s) => tasksAll(s, 'B-902').some((t) => t.type !== 'check' && t.accept === 'accepted')]
+      ],
+      go: () => openDrawer('B-902')
     },
     {
-      t: 'Work C-702’s welfare case',
-      d: 'Set its priority, assign “Dr. Kavita (A-201)” and record her YES. Advance +15 min and record her interim update with a next deadline. The household stays Unconfirmed: only a child has been reached.',
-      done: (s) => { const c = Object.values(s.cases).find((x) => x.flatId === 'C-702'); return !!c && c.priority !== 'unknown' && c.updates.length > 0; },
+      time: '09:00',
+      title: 'Hand out the flats nobody has reached',
+      situation: `Tower C’s intercom is down, so its 38 unconfirmed flats need door-to-door checks. Tower D’s upper floors weren’t reached either. One warden for all of Tower C would be too much.`,
+      actions: [
+        `Click <b>Show me</b>: it selects Tower C floors 6 to 10 (19 flats). Click <b>Assign follow-up…</b>, type <code>Arjun (C-304)</code>, choose <b>+45 min</b>, click <b>Assign 19 units</b>, and close the message.`,
+        `Click <b>Show me</b> again: floors 1 to 5 (19 flats). Assign them to <code>Farhan (B-703)</code> with <b>+45 min</b>.`,
+        `Click <b>Show me</b> a third time: Tower D floors 7 to 10 (15 flats). Assign them to <code>Meena (D-204)</code> with <b>+60 min</b>.`,
+        `Optional: select all 38 Tower C flats for one person to see the workload warning, then cancel.`
+      ],
+      expected: `All three batches appear under <b>Unresolved work → Awaiting acceptance</b>. Next-step coverage does not rise: nobody has said yes yet.`,
+      why: `An assignment is a request, not a commitment. Large lists for one person are flagged before they are sent.`,
+      checks: [
+        ['Arjun assigned in Tower C', (s) => Object.values(s.tasks).some((t) => /^arjun/i.test(t.owner) && s.flats[t.flatId].building === 'Tower C')],
+        ['Farhan assigned in Tower C', (s) => Object.values(s.tasks).some((t) => /^farhan/i.test(t.owner) && s.flats[t.flatId].building === 'Tower C')],
+        ['Meena assigned in Tower D', (s) => Object.values(s.tasks).some((t) => /^meena/i.test(t.owner) && s.flats[t.flatId].building === 'Tower D')]
+      ],
+      go: () => {
+        const has = (re) => Object.values(state.tasks).some((t) => re.test(t.owner));
+        if (!has(/^arjun/i)) selectFor({ fBuilding: 'Tower C' }, towerFloors('Tower C', 6, 10), 'Tower C floors 6 to 10. Click “Assign follow-up…” and type Arjun (C-304).');
+        else if (!has(/^farhan/i)) selectFor({ fBuilding: 'Tower C' }, towerFloors('Tower C', 1, 5), 'Tower C floors 1 to 5. Click “Assign follow-up…” and type Farhan (B-703).');
+        else selectFor({ fBuilding: 'Tower D' }, towerFloors('Tower D', 7, 10), 'Tower D floors 7 to 10. Click “Assign follow-up…” and type Meena (D-204).');
+      }
+    },
+    {
+      time: '09:15',
+      title: 'Record who said yes, who said no, and reassign',
+      situation: `Fifteen minutes later, Arjun and Meena reply YES. Farhan replies NO: his wife has been gone since yesterday and his children are alone at home. Rohit (B-501) is at the desk and offers to help.`,
+      actions: [
+        `Click <b>+15 min</b> in the header (the clock shows 09:15).`,
+        `Open <b>Unresolved work</b>. Under <b>Awaiting acceptance</b>, next to Arjun, click <b>Record response…</b>, choose <b>YES</b> and <b>Reply by WhatsApp or SMS</b>, then <b>Record response</b>. Do the same for Meena.`,
+        `Next to Farhan, click <b>Record response…</b>, choose <b>NO</b>, <b>Reply by WhatsApp or SMS</b>, and type the reason <code>Children alone at home</code>.`,
+        `His 19 flats move to <b>Needs an owner</b>. Next to Tower C, click <b>Assign 19…</b>, type <code>Rohit (B-501)</code>, choose <b>+90 min</b> and assign. Then record Rohit’s YES (<b>In person at the desk</b>).`
+      ],
+      expected: `<b>Awaiting acceptance</b> returns to 0. Arjun’s, Meena’s and Rohit’s flats are now covered.`,
+      why: `A decline goes straight back to the queue, instead of silently staying with someone who can’t do it.`,
+      checks: [
+        ['Clock at 09:15 or later (press +15 min)', (s) => s.clock >= START + 15],
+        ['Arjun’s YES recorded', (s) => Object.values(s.tasks).some((t) => /^arjun/i.test(t.owner) && t.accept === 'accepted')],
+        ['Meena’s YES recorded', (s) => Object.values(s.tasks).some((t) => /^meena/i.test(t.owner) && t.accept === 'accepted')],
+        ['Farhan’s NO recorded, with his reason', (s) => Object.values(s.tasks).some((t) => /^farhan/i.test(t.owner) && /^Declined|^Reassigned/.test(t.outcome || ''))],
+        ['Farhan’s flats reassigned, and the new owner’s YES recorded', (s) => {
+          const fl = farhanFlats(s);
+          return fl.length > 0 && fl.every((id) => s.flats[id].status === 'confirmed' || tasksAll(s, id).some((t) => !/^farhan/i.test(t.owner) && t.accept === 'accepted'));
+        }]
+      ],
+      go: () => showTab('queue')
+    },
+    {
+      time: '09:30',
+      title: 'Apply Arjun’s door-to-door report',
+      situation: `By 9:30 Arjun has knocked on his 19 flats. Most adults answered; many told him someone at home is gone, which he did not write down. At C-702 a child answered alone. C-804 and C-1004 didn’t answer. C-803’s family phoned him to say they are away.`,
+      actions: [
+        `Click <b>+15 min</b> (09:30).`,
+        `On Arjun’s report in the inbox, click <b>Copy to bulk update</b>, then <b>Validate</b>. The first line is free text in Hinglish and is flagged.`,
+        `Click <b>Apply 19 valid lines</b>, then close the dialog.`
+      ],
+      expected: `C-702 opens a welfare case with priority “Not yet assessed”. C-804 and C-1004 show “no answer” and need an owner. C-803 is confirmed away with its source. A relative’s call about C-804 arrives.`,
+      why: `Khairiyat never interprets free text. Each of Arjun’s lines names its own channel (VISIT), so no batch channel is needed.`,
+      checks: [
+        ['Clock at 09:30 or later', (s) => s.clock >= START + 30],
+        ['Arjun’s report applied: C-702 has a welfare case and C-803 is confirmed away', (s) => !!caseAny(s, 'C-702') && isConfirmed(s, 'C-803')],
+        ['C-804 and C-1004 recorded as “no answer”', (s) => (s.flats['C-804'].attempts || 0) >= 1 && (s.flats['C-1004'].attempts || 0) >= 1]
+      ],
+      go: () => openBulkFromMsg('arjunReport', 'Arjun’s report arrives 15 demo-minutes after you record his YES. Press +15 min.')
+    },
+    {
+      time: '09:30',
+      title: 'A child without a capable caregiver',
+      situation: `At C-702, a girl of about eight answered the door alone. She says her parents didn’t come home last night. Nobody knows why yet, and Khairiyat will not guess.`,
+      actions: [
+        `Click <b>Show me</b> (opens C-702). Click <b>Set priority…</b>, choose <b>Urgent</b>, type the reason <code>Young child alone</code>, then <b>Save priority</b>.`,
+        `Click <b>Assign helper…</b>, type <code>Dr. Kavita (A-201)</code>, keep <b>+30 min</b>, assign, and close the message.`,
+        `Kavita phones back: click <b>Record response…</b>, choose <b>YES</b> and <b>Phone call</b>.`
+      ],
+      expected: `C-702’s case shows <b>Urgent</b>, with Kavita’s visit accepted. The household stays <b>Unconfirmed</b>: only a child has been reached.`,
+      why: `Priority is the coordinator’s judgement, not medical triage. A child answering the door does not confirm the household.`,
+      checks: [
+        ['C-702’s priority set by you (not “Not yet assessed”)', (s) => { const c = caseAny(s, 'C-702'); return !!c && c.priority !== 'unknown'; }],
+        ['A helper accepted the C-702 visit', (s) => tasksAll(s, 'C-702').some((t) => t.type !== 'check' && t.accept === 'accepted')]
+      ],
       go: () => openDrawer('C-702')
     },
     {
-      t: 'Silent flat C-804: concern, second visit, police contact',
-      d: 'After the relative’s call, report a welfare concern on C-804. Assign “Nisha (D-503) + Sunita (A-603)” and record their YES. Advance +15 min, record their “no answer”, then “Record contact…” with the police. An acknowledged call isn’t an outcome: the case stays open with a follow-up.',
-      done: (s) => Object.values(s.cases).some((c) => c.flatId === 'C-804' && c.contacts.length > 0),
+      time: '09:30',
+      title: 'A relative’s worry about a silent flat',
+      situation: `A caller says her mother, 78, lives alone in C-804 and hasn’t answered her phone since morning. Arjun got no answer there either. Neither fact proves anything has happened to her.`,
+      actions: [
+        `Click <b>Show me</b> (opens C-804), then <b>Report a welfare concern…</b> Choose <b>Adult who can’t manage alone</b>, leave the priority at <b>Not yet assessed</b>, type the source <code>Daughter’s phone call</code>, then <b>Open welfare case</b>.`,
+        `Click <b>Assign helper…</b>, type <code>Nisha (D-503) + Imran (C-601)</code>, keep <b>+30 min</b>, assign, and close the message.`,
+        `Record their YES (<b>Reply by WhatsApp or SMS</b>).`
+      ],
+      expected: `C-804 has an open case with two volunteers accepted. Its household stays <b>Unconfirmed</b>.`,
+      why: `A worry is a reason to check, not evidence that she is missing. Two volunteers go together, and their message tells them never to force entry.`,
+      checks: [
+        ['A welfare case was opened for C-804', (s) => !!caseAny(s, 'C-804')],
+        ['Two volunteers accepted the C-804 visit', (s) => tasksAll(s, 'C-804').some((t) => t.type === 'welfare' && t.accept === 'accepted')]
+      ],
       go: () => openDrawer('C-804')
     },
     {
-      t: 'Deadlines: due now, overdue, extended',
-      d: 'Assign Tower D’s flats that need an owner to “Meena (D-204)” with +30 min, and record her YES. Advance until her tasks show “Due now”, then once more: “Overdue”, still Meena’s. Extend with her reason, or reassign.',
-      done: (s) => !!s.flags.overdueHandled,
-      go: () => selectFor({ fBuilding: 'Tower D' }, (id) => { const f = state.flats[id]; return f.building === 'Tower D' && unresolved(f) && !openTask(f); }, 'Click “Assign follow-up…” and choose Meena (D-204).')
+      time: '09:45',
+      title: 'Helpers report back, and the cases stay open',
+      situation: `At 9:45 Kavita is with the girl at C-702. Her aunt lives in D-603 in this society and is on her way. Sunita has been to B-902: Mrs Bhalla has eaten, the B-901 family will bring meals, and her daughter in Pune is trying to travel tomorrow. Longer-term care isn’t arranged.`,
+      actions: [
+        `Click <b>+15 min</b> (09:45).`,
+        `Open C-702, click <b>Record interim update…</b>, choose <b>Helper is with the resident</b>, note <code>Aunt from D-603 on her way</code>, choose <b>+60 min</b>, then <b>Record update</b>.`,
+        `Open B-902, click <b>Record interim update…</b>, choose <b>Visit made: more help needed</b>, note <code>Neighbours bringing meals; daughter travelling</code>, choose <b>+120 min</b>, then <b>Record update</b>.`
+      ],
+      expected: `Both cases stay open with new report deadlines (10:45 and 11:45). Neither household changes.`,
+      why: `An update is progress, not an outcome. A case stays open until someone records what actually happened, with evidence.`,
+      checks: [
+        ['Clock at 09:45 or later', (s) => s.clock >= START + 45],
+        ['Interim update recorded for C-702', (s) => { const c = caseAny(s, 'C-702'); return !!c && c.updates.length > 0; }],
+        ['Interim update recorded for B-902', (s) => { const c = caseAny(s, 'B-902'); return !!c && c.updates.length > 0; }]
+      ],
+      go: () => { const c = caseAny(state, 'C-702'); openDrawer(c && c.updates.length ? 'B-902' : 'C-702'); }
     },
     {
-      t: 'Outcomes with evidence',
-      d: 'C-702: when the grandmother arrives, confirm the household (adult reached). The case stays open. Then close the case: Care in place, seen in person. C-804: after the son’s call, close the case as located elsewhere. Its household stays Unconfirmed until you record that separately.',
-      done: (s) => Object.values(s.cases).some((c) => c.flatId === 'C-702' && c.outcome && c.outcome.type === 'CARE') && Object.values(s.cases).some((c) => c.flatId === 'C-804' && c.status === 'closed'),
-      go: () => openDrawer(Object.values(state.cases).some((c) => c.flatId === 'C-702' && c.status === 'closed') ? 'C-804' : 'C-702')
+      time: '09:45',
+      title: 'No answer, and a service that hasn’t committed',
+      situation: `Nisha and Imran went back to C-804: they rang, knocked and phoned. No answer. A neighbour hasn’t seen her since yesterday evening. They did not force the door. You phone the police control room yourself: every van is out, and they say they will call back.`,
+      actions: [
+        `Click <b>Show me</b> (opens C-804), click <b>Record “no answer”</b>, then <b>Record no answer</b>.`,
+        `Click <b>Record contact with a service or person…</b> Choose <b>Police (100)</b> and <b>Reached them, but no commitment yet</b>. Keep the follow-up owner <code>Desk (coordinator)</code> and <b>+60 min</b>. Click <b>Record contact</b>.`
+      ],
+      expected: `The case shows <b>Contact attempted: no commitment yet</b>, with a follow-up owned (and accepted) by the desk, due 10:45.`,
+      why: `A call to a service is not a handoff, and not an outcome. Khairiyat placed no call; it records what you did.`,
+      checks: [
+        ['C-804’s second “no answer” recorded', (s) => (s.flats['C-804'].attempts || 0) >= 2],
+        ['Police call recorded without a commitment', (s) => { const c = caseAny(s, 'C-804'); return !!c && c.contacts.some((x) => /police/i.test(x.who) && x.result !== 'ACK'); }],
+        ['Someone owns the follow-up', (s) => tasksAll(s, 'C-804').some((t) => t.type === 'followup')]
+      ],
+      go: () => openDrawer('C-804')
     },
     {
-      t: 'A correction and a new concern',
-      d: 'B-203 was entered by mistake: correct its household status, with a reason, and confirm B-302. Then D-502, already confirmed, gets a new concern: report it. The household stays Confirmed.',
-      done: (s) => hasEventIn(s, 'B-203', 'correction') && Object.values(s.cases).some((c) => c.flatId === 'D-502'),
-      go: () => openDrawer(hasEventIn(state, 'B-203', 'correction') ? 'D-502' : 'B-203')
+      time: '10:00',
+      title: 'A new concern at a household that was already confirmed',
+      situation: `At 10:00 a D-501 resident writes that the lady in D-502 has run out of her blood-pressure medicine; the chemist in the society market hasn’t opened since yesterday. D-502’s household was confirmed by the guard at 9:00. Meena’s Tower D tasks are now due.`,
+      actions: [
+        `Click <b>+15 min</b> (10:00). In the summary, Meena’s 15 flats count as <b>due now</b>: still hers, still covered.`,
+        `Click <b>Show me</b> (opens D-502), then <b>Report a welfare concern…</b> Choose <b>Essentials (food, water, medicines)</b>, leave the priority at <b>Not yet assessed</b>, type the source <code>Neighbour’s WhatsApp message</code>, then <b>Open welfare case</b>.`,
+        `Click <b>Assign helper…</b>, type <code>Nisha (D-503)</code>, choose <b>+60 min</b>, assign, close the message, and record her YES (<b>Phone call</b>).`
+      ],
+      expected: `D-502 keeps <b>Household confirmed</b> and gains an open case, with Nisha accepted and due at 11:00.`,
+      why: `A confirmed household can still need help later. Khairiyat stores the category of concern, not the diagnosis.`,
+      checks: [
+        ['Clock at 10:00 or later', (s) => s.clock >= START + 60],
+        ['A new case opened for D-502 while its household stays Confirmed', (s) => !!caseAny(s, 'D-502') && isConfirmed(s, 'D-502')],
+        ['A helper accepted the D-502 visit', (s) => tasksAll(s, 'D-502').some((t) => t.type !== 'check' && t.accept === 'accepted')]
+      ],
+      go: () => openDrawer('D-502')
     },
     {
-      t: 'Society update, then next-step coverage',
-      d: 'Copy the society update (totals only). Then give every remaining unresolved flat an owner and record acceptance. Khairiyat records when coverage is reached, and keeps listing what is still outstanding.',
-      done: (s) => !!s.flags.updateCopied && s.coverAt != null,
-      go: () => { ui.tab = state.flags.updateCopied ? 'queue' : 'update'; renderAll(); }
+      time: '10:15',
+      title: 'An overdue list: partial report and a justified extension',
+      situation: `At 10:15 Meena’s deadline has passed. She writes that 9 flats are done (her lines are in the message), 6 are left, and the lift keeps stopping. She asks for 15 more minutes.`,
+      actions: [
+        `Click <b>+15 min</b> (10:15). <b>Overdue</b> shows 15: the tasks are still Meena’s.`,
+        `On Meena’s message, click <b>Copy to bulk update</b>, <b>Validate</b>, then <b>Apply 9 valid lines</b> and close.`,
+        `In <b>Unresolved work → Overdue</b>, next to Meena (6 flats), click <b>Extend deadline…</b>, choose <b>+15 min</b>, type the reason <code>Lift stopping; 6 flats left</code>, then <b>Extend deadline</b>.`
+      ],
+      expected: `9 more households are confirmed. Meena’s other 6 tasks stay hers, due 10:30, and <b>Overdue</b> returns to 0.`,
+      why: `Overdue work doesn’t vanish or silently change hands. It stays flagged until you check in, extend it with a reason, or reassign it.`,
+      checks: [
+        ['Clock at 10:15 or later', (s) => s.clock >= START + 75],
+        ['Meena’s completed flats applied from her message', (s) => isConfirmed(s, 'D-701') && /meena/i.test(s.flats['D-701'].basis.by || '')],
+        ['Her overdue tasks extended with a reason (or reassigned)', (s) => !!s.flags.overdueHandled && !Object.values(s.tasks).some((t) => t.status === 'open' && /^meena/i.test(t.owner) && s.clock > t.due)]
+      ],
+      go: () => {
+        if (!isConfirmed(state, 'D-701')) openBulkFromMsg('meenaLate', 'Meena’s message arrives once her deadline has passed. Press +15 min until the clock shows 10:15.');
+        else showTab('queue');
+      }
+    },
+    {
+      time: '10:15',
+      title: 'Outcomes, recorded with evidence',
+      situation: `Kavita reports that the aunt from D-603 has arrived and will stay with the girl at C-702; Kavita saw them together. Then C-804’s son phones: his mother has been with him in Faridabad since yesterday afternoon, and her phone was left at home. He spoke to her a moment ago.`,
+      actions: [
+        `Open C-702, click <b>Confirm: adult reached…</b>, choose <b>Door visit</b>, reported by <code>Dr. Kavita (A-201)</code>, tick the adult box, then <b>Confirm household</b>. The case stays open.`,
+        `Click <b>Close case with outcome…</b>, choose <b>Care in place</b>, details <code>Aunt from D-603 staying with the child</code>, evidence <b>Seen in person by a volunteer or helper</b>, then <b>Close case</b>.`,
+        `Open C-804, click <b>Close case with outcome…</b>, choose <b>Resident located elsewhere and safe</b>, details <code>With her son in Faridabad</code>, evidence <b>Spoke to family or the carer</b>, then <b>Close case</b>.`,
+        `C-804’s household is still Unconfirmed. Click <b>Confirm: away / vacant…</b>, source <code>Son phoned the desk</code>, then <b>Confirm away / vacant</b>. (Phone the police yourself to tell them.)`
+      ],
+      expected: `Both cases close with their evidence. C-804’s household is recorded separately, with the son as its source.`,
+      why: `Closing a case needs an outcome and evidence, and never confirms a household by itself (or the other way round). The son’s call replaces the daughter’s earlier worry, and both stay in the history.`,
+      checks: [
+        ['C-702 household confirmed', (s) => isConfirmed(s, 'C-702')],
+        ['C-702 case closed: Care in place, seen in person', (s) => { const c = caseAny(s, 'C-702'); return !!c && c.status === 'closed' && c.outcome.type === 'CARE' && c.outcome.evidence === 'SEEN'; }],
+        ['C-804 case closed with family or resident evidence', (s) => { const c = caseAny(s, 'C-804'); return !!c && c.status === 'closed' && ['FAMILY', 'RESIDENT'].includes(c.outcome.evidence); }],
+        ['C-804 household recorded separately', (s) => isConfirmed(s, 'C-804')]
+      ],
+      go: () => { const c = caseAny(state, 'C-702'); openDrawer(c && c.status === 'closed' ? 'C-804' : 'C-702'); }
+    },
+    {
+      time: '10:15',
+      title: 'A unit entered under the wrong number',
+      situation: `Ramesh realises he wrote B-203 on his list by mistake: he actually spoke to B-302. Nobody has reached B-203.`,
+      actions: [
+        `Click <b>Show me</b> (opens B-203), click <b>Correct household status…</b>, type the reason <code>Guard entered B-203 by mistake; it was B-302</code>, then <b>Save correction</b>.`,
+        `Open B-302, click <b>Confirm: adult reached…</b>, choose <b>Intercom</b>, reported by <code>Guard room</code>, tick the adult box, then <b>Confirm household</b>.`
+      ],
+      expected: `B-203 is <b>Unconfirmed</b> again. Its history still shows the original entry and the correction, with the reason.`,
+      why: `Nothing is overwritten or deleted. A correction is a new entry with a reason.`,
+      checks: [
+        ['B-203 corrected back to Unconfirmed, with a reason', (s) => hasEventIn(s, 'B-203', 'correction')],
+        ['B-302 confirmed', (s) => isConfirmed(s, 'B-302')]
+      ],
+      go: () => openDrawer(hasEventIn(state, 'B-203', 'correction') ? 'B-302' : 'B-203')
+    },
+    {
+      time: '10:15',
+      title: 'Give every remaining flat an accepted next step',
+      situation: `Six flats have nobody assigned: A-302, A-604 and A-1003 (no answer on the intercom), B-704 (the rumour), B-203 (after the correction) and C-1004 (no answer). Arjun has finished his list and offers to take them.`,
+      actions: [
+        `In <b>Unresolved work → Needs an owner</b>, click <b>Assign all 6 flats needing an owner…</b>, type <code>Arjun (C-304)</code>, choose <b>+60 min</b>, assign, and close the message.`,
+        `Record Arjun’s YES (<b>Reply by WhatsApp or SMS</b>) under <b>Awaiting acceptance</b>.`
+      ],
+      expected: `<b>Need an owner</b>, <b>Awaiting acceptance</b>, <b>Overdue</b> and <b>Due now</b> are all 0. Khairiyat records when next-step coverage was first reached, and still lists every unconfirmed household and open case.`,
+      why: `Coverage means every unresolved item has someone who said yes and a deadline that hasn’t passed. It is a coordination measure, not a safety measure.`,
+      checks: [
+        ['No unit needs an owner', () => stats().none === 0],
+        ['No assignment is awaiting acceptance', () => stats().pending === 0],
+        ['Nothing is due now or overdue', () => { const st = stats(); return st.overdue === 0 && st.dueNow === 0; }]
+      ],
+      go: () => showTab('queue')
+    },
+    {
+      time: '10:15',
+      title: 'Final review: hand over honestly',
+      situation: `It is 10:15. The emergency is not over, and it won’t be by lunchtime. What the desk can do is leave nothing unowned, unaccepted, overdue or unexplained, so another coordinator could take over now.`,
+      actions: [
+        `Open the <b>Society update</b> tab and click <b>Copy update</b>. It contains totals only.`,
+        `Click <b>Open handover summary</b> below (or <b>More → Handover summary</b>) and read what is still open, and why.`
+      ],
+      expected: `The summary below lists the households still unconfirmed, each with an accepted owner and deadline, and two welfare cases (B-902 and D-502) that remain open on purpose, with their reasons.`,
+      why: `A clean screen would be dishonest: Mrs Bhalla’s care and D-502’s medicine are not settled. Complete here means every item is visible, owned, accepted and in time.`,
+      checks: [
+        ['Steps 1 to 17 are complete', () => GUIDE.slice(0, -1).every((g, i) => stepDone(i))],
+        ['Every scripted message has arrived and been handled', () => !openMsgs().length && !waitingMsgs().length],
+        ['Nothing needs an owner, awaits acceptance, or is due or overdue', () => { const st = stats(); return st.gaps === 0 && st.dueNow === 0; }],
+        ['Society update generated after coverage was reached', (s) => s.flags.updateCopiedAt != null && s.coverAt != null && s.flags.updateCopiedAt >= s.coverAt]
+      ],
+      go: () => openModal('handover')
     }
   ];
 
+  function stepDone(i) {
+    try { return GUIDE[i].checks.every((c) => !!c[1](state)); } catch (e) { return false; }
+  }
+  function guideIndex() {
+    const n = state.flags.guideStep;
+    return Number.isInteger(n) && n >= 0 && n < GUIDE.length ? n : 0;
+  }
+  // waiting: not arrived · open: needs action · actioned: its step is complete · marked: marked handled by hand
+  function msgStatus(id) {
+    const m = state.msgs[id];
+    if (!m || m.status !== 'arrived') return 'waiting';
+    if (m.handled) return 'marked';
+    return stepDone(specOf(id).step - 1) ? 'actioned' : 'open';
+  }
+  const openMsgs = () => MSG_SPECS.filter((sp) => msgStatus(sp.id) === 'open');
+  const waitingMsgs = () => MSG_SPECS.filter((sp) => msgStatus(sp.id) === 'waiting');
+
   function renderAside() {
     const isDemo = state.scenario === 'neelgiri';
-    const doneCount = GUIDE.filter((g) => g.done(state)).length;
-    const guideBody = state.order.length && !isDemo
-      ? '<p class="card-note">The demo guide and scripted messages follow the fictional Neelgiri register. This register works with every feature, but no scripted messages will arrive. Use <strong>Demo &amp; data → Reset demo, Neelgiri register loaded</strong> to return to the scenario.</p>'
-      : `<p class="card-note">A checklist, not a slideshow. Do each step in the app itself, in any order. Steps tick off when the data shows they happened.</p>
-        <ol class="steps">${GUIDE.map((g, i) => {
-          const done = g.done(state);
-          return `<li class="${done ? 'done' : ''}"><span class="step-n" aria-hidden="true">${done ? '✓' : i + 1}</span><div><div class="step-title">${g.t}${done ? ' <span class="sr-only">(done)</span>' : ''}</div><div class="step-text">${g.d}</div>${done ? '' : `<button class="btn btn-sm btn-link" data-action="guide-go" data-step="${i}">Show me</button>`}</div></li>`;
-        }).join('')}</ol>`;
-    const guide = `<section class="card guide" aria-labelledby="guide-h">
-      <header class="card-head">
-        <h2 id="guide-h">Demo guide</h2>${isDemo || !state.order.length ? `<span class="muted">${doneCount}/${GUIDE.length} done</span>` : ''}
-        <button class="btn btn-sm btn-ghost" data-action="toggle-guide" aria-expanded="${ui.guideOpen}">${ui.guideOpen ? 'Hide' : 'Show'}</button>
-      </header>
-      ${ui.guideOpen ? guideBody : ''}
-    </section>`;
-
-    const arrived = MSG_SPECS.map((sp) => ({ sp, m: state.msgs[sp.id] })).filter((x) => x.m && x.m.status === 'arrived').sort((a, b) => b.m.seq - a.m.seq);
-    const pending = MSG_SPECS.length - arrived.length;
-    const open = arrived.filter((x) => !x.m.handled).length;
-    const inbox = `<section class="card inbox" aria-labelledby="inbox-h">
-      <header class="card-head"><h2 id="inbox-h">Desk inbox <span lang="hi" class="hi">डेस्क पर संदेश</span></h2>${open ? `<span class="badge info">${open} to handle</span>` : ''}</header>
-      <p class="card-note">Scripted demo messages, as they might arrive by WhatsApp, phone or intercom. <strong>Khairiyat doesn’t read them</strong>: you decide what to record.</p>
-      ${arrived.length ? arrived.map(({ sp, m }) => msgCard(sp.id, m)).join('') : `<p class="empty-mini">No messages yet. ${!state.order.length ? 'Import the Neelgiri register to start the scenario.' : isDemo ? 'More arrive as the demo clock moves and as you act.' : 'Scripted messages only run with the Neelgiri register.'}</p>`}
-      ${isDemo && pending ? `<p class="card-note muted">${plural(pending, 'more scripted message')} may arrive as the scenario unfolds.</p>` : ''}
-    </section>`;
-    $('#aside').innerHTML = guide + inbox;
+    const guide = state.order.length && !isDemo
+      ? `<section class="side guide" aria-labelledby="guide-h"><header class="side-head"><h2 id="guide-h">Walkthrough</h2></header>
+          <p class="side-note">The walkthrough and its scripted messages follow the fictional Neelgiri register. This register works with every feature, but no scripted messages will arrive. To return to the walkthrough, use <b>More → Reset demo, Neelgiri register loaded</b>.</p></section>`
+      : guideHtml();
+    $('#aside').innerHTML = guide + inboxHtml();
   }
 
-  function msgCard(id, m) {
+  function guideHtml() {
+    const i = guideIndex();
+    const g = GUIDE[i];
+    const last = GUIDE.length - 1;
+    const doneList = GUIDE.map((_, k) => stepDone(k));
+    const nDone = doneList.filter(Boolean).length;
+    const head = `<header class="side-head"><h2 id="guide-h">Walkthrough</h2><span class="side-count">Step ${i + 1} of ${GUIDE.length}</span>
+      <button class="btn btn-sm btn-ghost" data-action="toggle-guide" aria-expanded="${ui.guideOpen}">${ui.guideOpen ? 'Hide' : 'Show'}</button></header>
+      <div class="progress" role="progressbar" aria-label="Walkthrough progress" aria-valuemin="0" aria-valuemax="${GUIDE.length}" aria-valuenow="${nDone}"><span style="width:${Math.round((nDone / GUIDE.length) * 100)}%"></span></div>
+      <p class="progress-text">${nDone} of ${GUIDE.length} steps complete</p>`;
+    if (!ui.guideOpen) return `<section class="side guide" aria-labelledby="guide-h">${head}<p class="side-note">Current step: <b>${esc(g.title)}</b></p></section>`;
+    const results = g.checks.map(([label, fn]) => { let ok = false; try { ok = !!fn(state); } catch (e) { ok = false; } return { label, ok }; });
+    const done = results.every((r) => r.ok);
+    const missing = results.filter((r) => !r.ok).length;
+    const msgs = MSG_SPECS.filter((sp) => sp.step === i + 1);
+    const msgText = (sp) => {
+      const st = msgStatus(sp.id);
+      const m = state.msgs[sp.id];
+      if (st === 'waiting') return `<li class="m-waiting"><span class="ck" aria-hidden="true">○</span> <b>${esc(sp.label)}</b>: not arrived yet. ${esc(sp.expect)}</li>`;
+      if (st === 'open') return `<li class="m-open"><span class="ck" aria-hidden="true">●</span> <b>${esc(sp.label)}</b>: arrived ${hhmm(m.arrivedAt)}, waiting in the Desk inbox.</li>`;
+      return `<li class="m-done"><span class="ck" aria-hidden="true">✓</span> <b>${esc(sp.label)}</b>: arrived ${hhmm(m.arrivedAt)}, ${st === 'marked' ? 'marked handled' : 'actioned'}.</li>`;
+    };
+    const steps = ui.stepsOpen ? `<ol class="all-steps">${GUIDE.map((s, k) => `<li class="${doneList[k] ? 'done' : ''}${k === i ? ' current' : ''}"><button class="step-link" data-action="guide-jump" data-step="${k}"${k === i ? ' aria-current="step"' : ''}><span class="ck" aria-hidden="true">${doneList[k] ? '✓' : k + 1}</span><span>${esc(s.title)}</span><span class="muted">${s.time}</span><span class="sr-only">${doneList[k] ? ' (complete)' : ''}</span></button></li>`).join('')}</ol>` : '';
+    return `<section class="side guide" aria-labelledby="guide-h">${head}
+      <article class="step">
+        <p class="step-kicker">Step ${i + 1} · demo time ${g.time}</p>
+        <h3 class="step-title">${esc(g.title)}</h3>
+        <h4>What has happened</h4><p>${g.situation}</p>
+        ${i === 0 ? '<p><button class="btn-link" data-action="open-scenario">Read the full scenario</button></p>' : ''}
+        <h4>Do this</h4><ol class="step-actions">${g.actions.map((a) => `<li>${a}</li>`).join('')}</ol>
+        <h4>You should see</h4><p>${g.expected}</p>
+        <h4>Why it matters</h4><p>${g.why}</p>
+        ${msgs.length ? `<h4>Messages for this step</h4><ul class="step-msgs">${msgs.map(msgText).join('')}</ul>` : ''}
+        ${i === last ? endStateHtml(true) : ''}
+        <h4>Done when</h4>
+        <ul class="checklist">${results.map((r) => `<li class="${r.ok ? 'ok' : 'todo'}"><span class="ck" aria-hidden="true">${r.ok ? '✓' : '○'}</span> ${esc(r.label)}<span class="sr-only">${r.ok ? ' (done)' : ' (not yet)'}</span></li>`).join('')}</ul>
+        <p class="step-status${done ? ' ok' : ''}" role="status">${done ? (i === last ? 'Walkthrough complete. The desk is in a state another coordinator could take over.' : 'Step complete. Read “You should see”, then go to the next step.') : `Still missing: ${missing} of ${results.length} (marked ○ above).`}</p>
+        <div class="step-nav">
+          <button class="btn btn-sm" data-action="guide-prev" ${i === 0 ? 'disabled' : ''}>Back</button>
+          ${g.go ? `<button class="btn btn-sm" data-action="guide-go">${i === last ? 'Open handover summary' : 'Show me'}</button>` : ''}
+          ${i < last ? `<button class="btn btn-sm btn-primary" data-action="guide-next" ${done ? '' : 'disabled'}>Next step</button>` : ''}
+        </div>
+      </article>
+      <button class="btn-link steps-toggle" data-action="toggle-steps" aria-expanded="${!!ui.stepsOpen}">${ui.stepsOpen ? 'Hide the list of steps' : `All ${GUIDE.length} steps (go back or jump ahead)`}</button>
+      ${steps}
+    </section>`;
+  }
+
+  // Live end-of-walkthrough summary; also the core of the handover summary.
+  function endState() {
+    const st = stats();
+    const isDemo = state.scenario === 'neelgiri';
+    return {
+      st,
+      openCases: state.order.map((id) => state.flats[id]).filter((f) => caseOf(f)),
+      msgsOpen: isDemo ? openMsgs() : [],
+      msgsWaiting: isDemo ? waitingMsgs() : [],
+      stepsLeft: isDemo ? GUIDE.slice(0, -1).map((g, k) => k).filter((k) => !stepDone(k)) : []
+    };
+  }
+  function endStateHtml(compact) {
+    const e = endState();
+    const st = e.st;
+    const row = (label, n, bad, note) => `<li class="${bad && n ? 'bad' : ''}"><span>${label}</span><b>${n}</b>${note ? `<span class="muted">${note}</span>` : ''}</li>`;
+    return `<div class="endstate">
+      <h4>${compact ? 'Where things stand now' : 'At a glance'}</h4>
+      <ul class="endlist">
+        ${row('Households still unconfirmed', st.unconfirmed, false, st.unconfirmed ? `${st.coveredUnconfirmed} with an accepted next check` : '')}
+        ${row('Welfare cases still open', st.cases, false, st.cases ? (compact ? 'each listed in the handover summary, with its reason' : 'each listed below, with its reason') : '')}
+        ${row('Next steps needing an owner', st.none, true)}
+        ${row('Assignments awaiting acceptance', st.pending, true)}
+        ${row('Tasks due now', st.dueNow, true)}
+        ${row('Tasks overdue', st.overdue, true)}
+        ${state.scenario === 'neelgiri' ? row('Scripted messages not handled', e.msgsOpen.length + e.msgsWaiting.length, true, e.msgsWaiting.length ? `${e.msgsWaiting.length} not arrived yet` : '') : ''}
+        ${state.scenario === 'neelgiri' ? row('Earlier walkthrough steps incomplete', e.stepsLeft.length, true, e.stepsLeft.length ? `step${e.stepsLeft.length > 1 ? 's' : ''} ${e.stepsLeft.map((k) => k + 1).join(', ')}` : '') : ''}
+      </ul>
+    </div>`;
+  }
+
+  function inboxHtml() {
+    const isDemo = state.scenario === 'neelgiri';
+    const cur = guideIndex() + 1;
+    const arrived = MSG_SPECS.filter((sp) => state.msgs[sp.id].status === 'arrived');
+    const rank = (sp) => { const st = msgStatus(sp.id); return st === 'open' ? (sp.step === cur ? 0 : 1) : 2; };
+    const ordered = arrived.slice().sort((a, b) => rank(a) - rank(b) || (rank(a) < 2 ? a.step - b.step : 0) || state.msgs[b.id].seq - state.msgs[a.id].seq);
+    const open = arrived.filter((sp) => msgStatus(sp.id) === 'open').length;
+    const waiting = isDemo ? MSG_SPECS.length - arrived.length : 0;
+    const body = !ui.inboxOpen ? '' : `<p class="side-note">Scripted demo messages, as they might arrive by WhatsApp, phone or intercom. <b>Khairiyat doesn’t read them</b>: you decide what to record. Each is labelled with its walkthrough step.</p>
+      ${arrived.length ? ordered.map((sp) => msgCard(sp, state.msgs[sp.id], cur)).join('') : `<p class="empty-mini">No messages yet. ${!state.order.length ? 'They start when the Neelgiri register is imported.' : isDemo ? 'More arrive as the demo clock moves and as you act.' : 'Scripted messages only run with the Neelgiri register.'}</p>`}
+      ${isDemo && waiting ? `<p class="side-note">${plural(waiting, 'more scripted message')} will arrive later in the walkthrough.</p>` : ''}`;
+    return `<section class="side inbox" aria-labelledby="inbox-h">
+      <header class="side-head"><h2 id="inbox-h">Desk inbox <span lang="hi" class="hi">डेस्क पर संदेश</span></h2><span class="side-count${open ? ' attn' : ''}">${open ? `${open} need action` : 'Nothing waiting'}</span>
+        <button class="btn btn-sm btn-ghost" data-action="toggle-inbox" aria-expanded="${ui.inboxOpen}">${ui.inboxOpen ? 'Hide' : 'Show'}</button></header>
+      ${body}
+    </section>`;
+  }
+
+  function msgCard(sp, m, cur) {
     const d = m.data;
-    if (m.handled) {
-      return `<article class="msg handled"><div class="msg-line"><span class="msg-from">✓ ${esc(d.from)}</span><span class="msg-meta">${hhmm(m.arrivedAt)}</span><button class="btn btn-xs btn-ghost" data-action="msg-handled" data-msg="${id}">Reopen</button></div></article>`;
+    const id = sp.id;
+    const st = msgStatus(id);
+    const tag = st === 'open' && sp.step === cur ? '<span class="msg-step now">For this step</span>' : `<span class="msg-step">Step ${sp.step}</span>`;
+    if (st !== 'open' && !ui.msgOpen.has(id)) {
+      return `<article class="msg done"><div class="msg-line"><span class="msg-from"><span aria-hidden="true">✓</span> ${esc(d.from)}</span><span class="msg-meta">${hhmm(m.arrivedAt)} · Step ${sp.step} · ${st === 'marked' ? 'marked handled' : 'actioned'}</span><button class="btn btn-xs btn-ghost" data-action="msg-expand" data-msg="${id}">Show</button></div></article>`;
     }
-    return `<article class="msg" data-msg="${id}">
-      <header><span class="msg-from">${esc(d.from)}</span><span class="msg-meta">${esc(d.channel)} · ${hhmm(m.arrivedAt)}</span></header>
+    return `<article class="msg${st === 'open' && sp.step === cur ? ' current' : ''}${st !== 'open' ? ' done' : ''}" data-msg="${id}">
+      <header><span class="msg-from">${esc(d.from)}</span>${tag}</header>
+      <p class="msg-meta">${esc(d.channel)} · ${hhmm(m.arrivedAt)}${st === 'actioned' ? ' · actioned' : st === 'marked' ? ' · marked handled' : ''}</p>
       <p class="msg-text" lang="hi-Latn">${esc(d.text)}</p>
       ${d.translation ? `<p class="msg-tr">${esc(d.translation)}</p>` : ''}
       ${d.lines ? `<details class="msg-lines"><summary>${d.lineCount} lines</summary><pre>${esc(d.lines)}</pre></details>` : ''}
-      <p class="msg-hint"><span aria-hidden="true">→ </span>${esc(d.hint)}</p>
+      <p class="msg-hint">${esc(d.hint)}</p>
       <div class="msg-actions">
-        ${d.lines ? `<button class="btn btn-sm btn-primary" data-action="msg-bulk" data-msg="${id}">Copy to bulk update</button>` : ''}
+        ${d.lines && st === 'open' ? `<button class="btn btn-sm btn-primary" data-action="msg-bulk" data-msg="${id}">Copy to bulk update</button>` : ''}
         ${d.flat ? `<button class="btn btn-sm" data-action="open-flat" data-id="${esc(d.flat)}">Open ${esc(d.flat)}</button>` : ''}
-        <button class="btn btn-sm btn-ghost" data-action="msg-handled" data-msg="${id}">Mark handled</button>
+        ${st === 'open' ? `<button class="btn btn-sm btn-ghost" data-action="msg-handled" data-msg="${id}">Mark handled</button>` : ''}
+        ${st === 'marked' ? `<button class="btn btn-sm btn-ghost" data-action="msg-handled" data-msg="${id}">Mark as not handled</button>` : ''}
+        ${st !== 'open' ? `<button class="btn btn-sm btn-ghost" data-action="msg-expand" data-msg="${id}">Hide</button>` : ''}
       </div>
     </article>`;
   }
@@ -1885,10 +2418,10 @@
 
     const household = `<section class="d-sec"><h3>Household · घर</h3>
       ${householdChip(f.status)}
-      <p class="d-desc">${f.status === 'confirmed' ? `Confirmed — ${esc(basisText(f.basis))} · ${hhmm(f.basis.at)}` : 'Not reached yet. This is <strong>not</strong> evidence that anyone has vanished or needs help.'}</p>
+      <p class="d-desc">${f.status === 'confirmed' ? `Confirmed: ${esc(basisText(f.basis))} · ${hhmm(f.basis.at)}` : 'Not reached yet. This is <strong>not</strong> evidence that anyone has vanished or needs help.'}</p>
       <p class="micro">Household-level only: this isn’t a check on every person linked to the unit.${c ? ' Confirming or correcting the household never changes the welfare case.' : ''}</p>
       <div class="act-row">${f.status === 'unconfirmed'
-        ? `<button class="btn act-ok" data-action="act-confirm-adult" data-id="${id}">✓ Confirm — adult reached…</button><button class="btn act-ok" data-action="act-confirm-away" data-id="${id}">✓ Confirm — away / vacant…</button>`
+        ? `<button class="btn act-ok" data-action="act-confirm-adult" data-id="${id}"><span aria-hidden="true">✓</span> Confirm: adult reached…</button><button class="btn act-ok" data-action="act-confirm-away" data-id="${id}"><span aria-hidden="true">✓</span> Confirm: away / vacant…</button>`
         : `<button class="btn" data-action="act-correct" data-id="${id}">Correct household status…</button>`}</div>
     </section>`;
 
@@ -1896,11 +2429,11 @@
     if (c) {
       const body = ui.revealCase
         ? `<dl class="kv">
-            <dt>Reported concern</dt><dd>${esc(CONCERN[c.concern])}${c.note ? ` — ${esc(c.note)}` : ''}</dd>
+            <dt>Reported concern</dt><dd>${esc(CONCERN[c.concern])}${c.note ? ` (${esc(c.note)})` : ''}</dd>
             <dt>Source</dt><dd>${esc(c.source)}</dd>
             <dt>Opened</dt><dd>${hhmm(c.openedAt)}</dd>
-            <dt>Updates</dt><dd>${c.updates.length ? c.updates.map((u) => `${hhmm(u.at)} · ${esc(u.type)} (${esc(u.by)})${u.note ? ` — ${esc(u.note)}` : ''}`).join('<br>') : 'None yet'}</dd>
-            <dt>Contacts</dt><dd>${c.contacts.length ? c.contacts.map((x) => `${hhmm(x.at)} · ${esc(x.who)}: ${esc(CONTACT_RESULT[x.result])}${x.recipient ? ` — ${esc(x.recipient)}` : ''}${x.reference ? `, ref ${esc(x.reference)}` : ''}`).join('<br>') : 'None'}</dd>
+            <dt>Updates</dt><dd>${c.updates.length ? c.updates.map((u) => `${hhmm(u.at)} · ${esc(u.type)} (${esc(u.by)})${u.note ? `: ${esc(u.note)}` : ''}`).join('<br>') : 'None yet'}</dd>
+            <dt>Contacts</dt><dd>${c.contacts.length ? c.contacts.map((x) => `${hhmm(x.at)} · ${esc(x.who)}: ${esc(CONTACT_RESULT[x.result])}${x.recipient ? ` (${esc(x.recipient)})` : ''}${x.reference ? `, ref ${esc(x.reference)}` : ''}`).join('<br>') : 'None'}</dd>
           </dl><button class="btn btn-sm btn-ghost" data-action="reveal-case">Hide case details</button>`
         : '<p class="masked-block">Case details are hidden on screen. <button class="btn btn-sm" data-action="reveal-case">Show case details</button></p>';
       welfare = `<section class="d-sec case-sec"><h3>Welfare case · हालचाल जाँच ${priorityBadge(c.priority)}</h3>
@@ -2005,7 +2538,7 @@
     return state.clock + rel;
   }
   const chipsPreview = (ids, max = 30) => `<div class="chips small">${ids.slice(0, max).map((id) => `<span class="chip st-${state.flats[id] ? state.flats[id].status : 'unconfirmed'} static">${esc(id)}</span>`).join('')}${ids.length > max ? `<span class="muted">+${ids.length - max} more</span>` : ''}</div>`;
-  const dangerNote = '<p class="notice danger small"><strong>Not medical triage.</strong> If anyone may be in immediate danger, call emergency services directly now — don’t wait for this desk or this app.</p>';
+  const dangerNote = '<p class="notice danger small"><strong>Not medical triage.</strong> If anyone may be in immediate danger, call emergency services directly now. Don’t wait for this desk or this app.</p>';
 
   const MODALS = {
     import: (p) => {
@@ -2041,7 +2574,7 @@
       const msgs = MSG_SPECS.filter((sp) => state.msgs[sp.id].status === 'arrived' && state.msgs[sp.id].data.lines);
       const bcOpts = Object.assign({ REQUIRE: 'Require a channel on each OK line (default)' }, CHANNEL);
       return {
-        title: 'Bulk update — strict format',
+        title: 'Bulk update (strict format)',
         wide: true,
         body: `<p class="lead">Paste replies in the fixed format, one line per unit: <code>UNIT,CODE[,DETAIL]</code>. Khairiyat <strong>does not interpret free text</strong> in English or Hinglish, and <strong>never invents a channel or source</strong>. Anything unclear is flagged, and nothing changes until you apply.</p>
           <details class="format-ref"><summary>Format reference</summary>
@@ -2052,7 +2585,7 @@
               <tr><td><code>C-702,HELP,CHILD</code></td><td>Someone may need help → a welfare case opens with priority “not yet assessed”. CHILD, ADULT, MEDICAL or ESSENTIALS.</td></tr>
             </tbody></table></details>
           <form data-form="bulk-validate" novalidate>
-            ${field('by', 'Reported by', peopleInput('by', p.by, 'e.g. Guard room — intercom round'))}
+            ${field('by', 'Reported by', peopleInput('by', p.by, 'e.g. Guard room (intercom round)'))}
             <div class="field"><label for="f-batch">Channel for OK lines that don’t name one</label>
               <select id="f-batch" name="batch">${Object.entries(bcOpts).map(([k, v]) => opt(k, v, p.batch || 'REQUIRE')).join('')}</select>
               <p class="micro">Only choose a channel if the reporter told you how every contact in this batch was made. “Channel not stated” records exactly that.</p></div>
@@ -2146,7 +2679,7 @@
     },
 
     'confirm-adult': (p) => ({
-      title: `Confirm ${esc(p.id)}’s household — adult reached`,
+      title: `Confirm ${esc(p.id)}’s household: adult reached`,
       body: `<form data-form="confirm-adult" novalidate>
           <fieldset class="field"><legend>How was the adult reached?</legend>${radios('channel', CHANNEL, '')}<div class="field-error" data-err="channel" role="alert"></div></fieldset>
           ${field('by', 'Reported by (who gave you this information)', peopleInput('by', '', 'e.g. Resident of A-402, or Guard room'))}
@@ -2159,7 +2692,7 @@
     }),
 
     'confirm-away': (p) => ({
-      title: p.ids.length === 1 ? `Confirm ${esc(p.ids[0])}’s household — away / vacant` : `Confirm ${p.ids.length} households — away / vacant`,
+      title: p.ids.length === 1 ? `Confirm ${esc(p.ids[0])}’s household: away / vacant` : `Confirm ${p.ids.length} households: away / vacant`,
       body: `<form data-form="confirm-away" novalidate>
           ${p.ids.length > 1 ? chipsPreview(p.ids) : ''}
           ${field('source', 'Source of the information', `<input id="f-source" name="source" maxlength="60" placeholder="e.g. Register note, or Son phoned the desk" autocomplete="off" value="${esc(p.source || '')}">`)}
@@ -2170,7 +2703,7 @@
     }),
 
     welfare: (p) => ({
-      title: `Report a welfare concern — ${esc(p.id)} · हालचाल जाँच`,
+      title: `Report a welfare concern for ${esc(p.id)} · हालचाल जाँच`,
       body: `<form data-form="welfare" novalidate>
           ${dangerNote}
           <fieldset class="field"><legend>Reported concern</legend>${radios('concern', CONCERN, '')}<div class="field-error" data-err="concern" role="alert"></div></fieldset>
@@ -2178,7 +2711,7 @@
             <div class="radio-list inline">${Object.entries(PRIORITY).map(([k, v]) => `<label><input type="radio" name="priority" value="${k}" ${k === 'unknown' ? 'checked' : ''}> ${v}</label>`).join('')}</div>
             <p class="micro">“Not yet assessed” is fine. The queue lists such cases above “Not urgent” ones.</p></fieldset>
           ${field('source', 'Source of the concern', '<input id="f-source" name="source" maxlength="60" placeholder="e.g. Warden report, relative’s phone call" autocomplete="off">')}
-          ${field('note', 'Note (optional — no names, ages or diagnoses)', '<input id="f-note" name="note" maxlength="100" autocomplete="off">')}
+          ${field('note', 'Note (optional; no names, ages or diagnoses)', '<input id="f-note" name="note" maxlength="100" autocomplete="off">')}
           <p class="micro">The household status doesn’t change (currently ${HOUSEHOLD[state.flats[p.id].status].en.toLowerCase()}). The case stays open until an outcome is recorded with its evidence.</p>
           <div class="form-actions"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-primary">Open welfare case</button></div>
         </form>`
@@ -2187,7 +2720,7 @@
     priority: (p) => {
       const c = caseOf(state.flats[p.id]);
       return {
-        title: `Set priority — ${esc(p.id)}`,
+        title: `Set priority for ${esc(p.id)}`,
         body: `<form data-form="priority" novalidate>
             ${dangerNote}
             <fieldset class="field"><legend>Priority</legend><div class="radio-list">${Object.entries(PRIORITY).map(([k, v]) => `<label><input type="radio" name="priority" value="${k}" ${c && k === c.priority ? 'checked' : ''}> ${v}</label>`).join('')}</div></fieldset>
@@ -2200,7 +2733,7 @@
     noanswer: (p) => {
       const t = openTask(state.flats[p.id]);
       return {
-        title: `Record “no answer” — ${esc(p.id)}`,
+        title: `Record “no answer” for ${esc(p.id)}`,
         body: `<form data-form="noanswer" novalidate>
             <p>This records an unanswered attempt on <strong>${esc(t ? t.owner : '')}</strong>’s ${t ? TASK_TYPE[t.type].toLowerCase() : 'task'}.</p>
             <p class="notice info">No answer is <strong>not</strong> evidence that anyone has vanished or needs help. The task closes, and ${esc(p.id)} will need a new owner and deadline.</p>
@@ -2211,10 +2744,10 @@
     },
 
     interim: (p) => ({
-      title: `Interim update — ${esc(p.id)}`,
+      title: `Interim update for ${esc(p.id)}`,
       body: `<form data-form="interim" novalidate>
           <fieldset class="field"><legend>What has happened?</legend><div class="radio-list">${INTERIM.map((v) => `<label><input type="radio" name="type" value="${esc(v)}"> ${v}</label>`).join('')}</div><div class="field-error" data-err="type" role="alert"></div></fieldset>
-          ${field('note', 'Note (optional — no names or diagnoses)', '<input id="f-note" name="note" maxlength="120" autocomplete="off" placeholder="e.g. Grandmother is on her way">')}
+          ${field('note', 'Note (optional; no names or diagnoses)', '<input id="f-note" name="note" maxlength="120" autocomplete="off" placeholder="e.g. Aunt from D-603 on her way">')}
           ${deadlineField(60, 'at', 'When should the owner report next?')}
           <p class="micro">An interim update never closes the case or confirms the household.</p>
           <div class="form-actions"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-primary">Record update</button></div>
@@ -2225,16 +2758,16 @@
       const f = state.flats[p.id];
       const t = openTask(f);
       const whos = {};
-      state.settings.contacts.forEach((c) => { whos[`${c.label} (${c.number})`] = `${esc(c.label)} — ${esc(c.number)}`; });
+      state.settings.contacts.forEach((c) => { whos[`${c.label} (${c.number})`] = `${esc(c.label)} (${esc(c.number)})`; });
       whos['Family member'] = 'Family member';
       whos['Other person or service'] = 'Other person or service';
       return {
-        title: `Record contact — ${esc(p.id)}`,
+        title: `Record contact for ${esc(p.id)}`,
         body: `<form data-form="contact" novalidate>
             <p class="notice info"><strong>Demo action.</strong> Khairiyat doesn’t call or message anyone. Make the call yourself, then record what actually happened. Numbers come from Settings and haven’t been verified for every location.</p>
             <fieldset class="field"><legend>Who did you contact?</legend>${radios('who', whos, '')}<div class="field-error" data-err="who" role="alert"></div></fieldset>
             <fieldset class="field"><legend>What happened?</legend>${radios('result', CONTACT_RESULT, '')}<div class="field-error" data-err="result" role="alert"></div></fieldset>
-            ${field('recipient', 'Who agreed to act (name or role — required if they agreed)', '<input id="f-recipient" name="recipient" maxlength="60" autocomplete="off" placeholder="e.g. PCR control room, duty officer">')}
+            ${field('recipient', 'Who agreed to act (name or role; required if they agreed)', '<input id="f-recipient" name="recipient" maxlength="60" autocomplete="off" placeholder="e.g. PCR control room, duty officer">')}
             ${field('reference', 'Reference (optional)', '<input id="f-reference" name="reference" maxlength="40" autocomplete="off" placeholder="e.g. 2231">')}
             <fieldset class="field"><legend>Next step (the case stays open either way)</legend>
               ${t ? `<p class="micro">Current next step: ${esc(t.owner)}, ${esc(dueLabel(t))}${t.accept === 'pending' ? ' (awaiting acceptance)' : ''}. It stays unless you replace it.</p><label class="check"><input type="checkbox" name="replace"> Replace it with a new follow-up</label>` : '<p class="micro"><strong>Required:</strong> nobody currently owns the next step.</p>'}
@@ -2249,9 +2782,9 @@
     'close-case': (p) => {
       const f = state.flats[p.id];
       const outs = {};
-      Object.entries(OUTCOME).forEach(([k, v]) => { if (k !== 'WITHDRAWN') outs[k] = `<strong>${v.label}</strong> <span class="muted">— ${v.ask}</span>`; });
+      Object.entries(OUTCOME).forEach(([k, v]) => { if (k !== 'WITHDRAWN') outs[k] = `<strong>${v.label}</strong> <span class="muted">(${v.ask})</span>`; });
       return {
-        title: `Close the welfare case — ${esc(p.id)}`,
+        title: `Close the welfare case for ${esc(p.id)}`,
         body: `<form data-form="close-case" novalidate>
             <fieldset class="field"><legend>Outcome</legend>${radios('outcome', outs, '')}<div class="field-error" data-err="outcome" role="alert"></div></fieldset>
             ${field('detail', 'Details for the chosen outcome', '<input id="f-detail" name="detail" maxlength="80" placeholder="e.g. Grandmother is with the child" autocomplete="off">')}
@@ -2274,7 +2807,7 @@
     }),
 
     reopen: (p) => ({
-      title: `Reopen the last welfare case — ${esc(p.id)}`,
+      title: `Reopen the last welfare case for ${esc(p.id)}`,
       body: `<form data-form="reopen" novalidate>
           <p>Use this if the case was closed on wrong or incomplete information. The previous outcome stays in the history, and the case will need an owner again.</p>
           ${field('reason', 'Reason (required)', '<input id="f-reason" name="reason" maxlength="100" autocomplete="off" placeholder="e.g. Carer left; the child is alone again">')}
@@ -2287,7 +2820,7 @@
       return {
         title: `Correct ${esc(p.id)}’s household status`,
         body: `<form data-form="correct" novalidate>
-            <p class="muted">Current entry: Confirmed — ${esc(basisText(f.basis))}</p>
+            <p class="muted">Current entry: Confirmed, ${esc(basisText(f.basis))}</p>
             <p>This moves the household back to <strong>Unconfirmed</strong>. The original entry stays in the history.${caseOf(f) ? ' The open welfare case is not affected.' : ' To raise a concern instead, use “Report a welfare concern”: no correction is needed for that.'}</p>
             ${field('reason', 'Reason (required)', '<input id="f-reason" name="reason" maxlength="100" autocomplete="off" placeholder="e.g. Guard entered B-203 by mistake; it was B-302">')}
             <div class="form-actions"><button type="button" class="btn btn-ghost" data-action="close-modal">Cancel</button><button type="submit" class="btn btn-primary">Save correction</button></div>
@@ -2298,7 +2831,7 @@
     edit: (p) => {
       const f = state.flats[p.id];
       return {
-        title: `Edit unit details — ${esc(p.id)}`,
+        title: `Edit unit details for ${esc(p.id)}`,
         body: `<form data-form="edit" novalidate>
             <p class="micro">The identifier itself can’t be edited here (re-import the register to change it). Building and floor are optional; the grid only appears when every unit has both.</p>
             ${field('building', 'Building or tower (optional)', `<input id="f-building" name="building" maxlength="40" value="${esc(f.building)}">`)}
@@ -2329,6 +2862,84 @@
           </form>`
       };
     },
+
+    handover: () => {
+      const e = endState();
+      const isDemo = state.scenario === 'neelgiri';
+      const lastStep = GUIDE.length - 1;
+      let status = '';
+      if (isDemo) {
+        if (stepDone(lastStep)) status = '<p class="notice ok"><b>Walkthrough complete.</b> Every item below is visible, owned, accepted and within its deadline. The emergency itself is not over.</p>';
+        else {
+          const why = [];
+          if (e.stepsLeft.length) why.push(`step${e.stepsLeft.length > 1 ? 's' : ''} ${e.stepsLeft.map((k) => k + 1).join(', ')} not complete`);
+          if (e.msgsOpen.length) why.push(`${plural(e.msgsOpen.length, 'scripted message')} not handled`);
+          if (e.msgsWaiting.length) why.push(`${plural(e.msgsWaiting.length, 'scripted message')} not arrived yet`);
+          if (e.st.gaps || e.st.dueNow) why.push(`${plural(e.st.gaps + e.st.dueNow, 'next step')} needing an owner, acceptance or attention to a deadline`);
+          if (!(state.flags.updateCopiedAt != null && state.coverAt != null && state.flags.updateCopiedAt >= state.coverAt)) why.push('no society update generated since coverage was reached');
+          status = `<p class="notice warn"><b>Walkthrough not complete yet:</b> ${esc(why.join('; '))}.</p>`;
+        }
+      }
+      const cases = e.openCases.map((f) => {
+        const c = caseOf(f);
+        const t = openTask(f);
+        const u = c.updates[c.updates.length - 1];
+        const k = c.contacts[c.contacts.length - 1];
+        const latest = [u && { at: u.at, text: `${u.by} reported “${u.type}”${u.note ? ` (${u.note})` : ''}` }, k && { at: k.at, text: `contact with ${k.who}: ${CONTACT_RESULT[k.result].toLowerCase()}` }].filter(Boolean).sort((a, b) => b.at - a.at)[0];
+        const why = latest ? `at ${hhmm(latest.at)}, ${latest.text}. No outcome has been recorded with evidence.` : 'the helper has not reported yet, so there is no outcome to record.';
+        const next = t ? `${esc(t.owner)}, ${t.accept === 'accepted' ? 'accepted' : '<b class="text-warn">awaiting acceptance</b>'}, ${esc(dueLabel(t))}` : '<b class="text-danger">nobody owns the next step</b>';
+        return `<li><p><b class="mono">${esc(f.id)}</b> · ${esc(PRIORITY[c.priority])} · ${ui.hideWelfare ? '<span class="masked">concern hidden</span>' : esc(CONCERN[c.concern])} · household ${HOUSEHOLD[f.status].en.toLowerCase()}</p>
+          <p>Why still open: ${esc(why)}</p><p>Stage: ${esc(STAGE[c.stage])}. Next: ${next}.</p></li>`;
+      }).join('');
+      const groups = new Map();
+      state.order.forEach((id) => {
+        const f = state.flats[id];
+        if (f.status !== 'unconfirmed') return;
+        const t = openTask(f);
+        const cov = coverage(f);
+        const key = t ? `${t.owner}\u0000${cov}\u0000${t.due}` : 'none';
+        if (!groups.has(key)) groups.set(key, { t, cov, ids: [] });
+        groups.get(key).ids.push(id);
+      });
+      const hh = [...groups.values()].sort((a, b) => (a.t ? a.t.due : -1) - (b.t ? b.t.due : -1)).map((g) => {
+        const who = g.t ? `<b>${esc(g.t.owner)}</b>: ${g.cov === 'covered' ? 'accepted' : g.cov === 'pending' ? '<b class="text-warn">awaiting acceptance</b>' : '<b class="text-danger">overdue</b>'}, ${esc(dueLabel(g.t))}` : '<b class="text-danger">Needs an owner</b>';
+        const list = g.ids.slice(0, 8).join(', ') + (g.ids.length > 8 ? `, and ${g.ids.length - 8} more` : '');
+        return `<li>${who} · ${plural(g.ids.length, 'household')} <span class="muted">(${esc(list)})</span></li>`;
+      }).join('');
+      const msgs = e.msgsOpen.concat(e.msgsWaiting);
+      return {
+        title: 'Handover summary',
+        wide: true,
+        body: `<p class="lead">A live summary for the next coordinator, at ${hhmm(state.clock)}. It describes coordination, not safety.</p>
+          ${status}
+          ${endStateHtml(false)}
+          <h3 class="sec-h">Welfare cases still open (${e.openCases.length})</h3>
+          ${e.openCases.length ? `<ul class="handover-list">${cases}</ul>` : '<p class="muted">None.</p>'}
+          <h3 class="sec-h">Households not yet confirmed (${e.st.unconfirmed})</h3>
+          ${e.st.unconfirmed ? `<ul class="handover-list compact">${hh}</ul>` : '<p class="muted">None.</p>'}
+          ${isDemo && msgs.length ? `<h3 class="sec-h">Scripted messages still to handle (${msgs.length})</h3><ul class="handover-list compact">${msgs.map((sp) => `<li>Step ${sp.step}: ${esc(sp.label)}. ${msgStatus(sp.id) === 'waiting' ? `Not arrived yet. ${esc(sp.expect)}` : 'Waiting in the Desk inbox.'}</li>`).join('')}</ul>` : ''}
+          <p class="notice info small">“Confirmed” means an adult in the household was reached, or a named source said it is away or vacant. It does not mean everyone linked to the flat is safe. “Unconfirmed” means nobody has reached it yet. Khairiyat does not record who is missing.</p>
+          <div class="form-actions"><button class="btn btn-primary" data-action="close-modal">Close</button></div>`
+      };
+    },
+
+    scenario: () => ({
+      title: 'About this scenario (fictional)',
+      body: `<p class="lead">Everything here is invented for the demo: the society, its people and every message.</p>
+        <p><b>Yesterday, at about 6:30 in the evening, half of all people everywhere vanished in an instant.</b> Phone networks were jammed through the night. This is the next morning.</p>
+        <p><b>Neelgiri Apartments, Sector 00, Gurugram</b> has 4 towers and 160 flats. The RWA’s records suggest roughly 550 people lived here before yesterday. That number is a fictional estimate for context only: Khairiyat does not count people.</p>
+        <p>The loss here is uneven, as it is everywhere. Some households lost no one. Some lost a parent, a partner, a carer or a child. Some flats have not answered at all, which by itself means nothing. Two of the society’s five guards are gone. Tower C’s intercom panel failed overnight. The Tower B lift has stopped because its operator is gone. The chemist in the society market hasn’t opened.</p>
+        <p><b>You are Priya, the RWA secretary</b>, running the roll-call desk from the clubhouse from 9:00. Your job today is not to find out who vanished. It is to make sure every household is reached, every reported welfare concern has someone responsible for the next step, and nothing is quietly dropped.</p>
+        <h3 class="sec-h">What Khairiyat records, and what it doesn’t</h3>
+        <ul class="plain">
+          <li>It records <b>units</b> (flats), not people.</li>
+          <li><b>Confirmed</b> means an adult in the household was reached, or a named source said the flat is away or vacant. It never means everyone linked to the flat is safe.</li>
+          <li><b>Unconfirmed</b> and <b>no answer</b> never mean that someone has vanished.</li>
+          <li>It never calls, messages or posts anything. You copy messages and make calls yourself.</li>
+        </ul>
+        <p class="muted small">The demo clock moves only when you press +15 min, and compresses a morning into about 75 minutes. Real follow-ups would take longer.</p>
+        <div class="form-actions"><button class="btn btn-primary" data-action="close-modal">Close</button></div>`
+    }),
 
     export: () => ({
       title: 'Export CSV for handover',
@@ -2599,7 +3210,10 @@
         return;
       }
       state = freshState(Object.assign({}, state.settings, { society: SAMPLE_SOCIETY }));
-      if (kind === 'reset-sample') importRegister(validateRegister(sampleNeelgiriCsv()).valid, SAMPLE_SOCIETY);
+      if (kind === 'reset-sample') {
+        importRegister(validateRegister(sampleNeelgiriCsv()).valid, SAMPLE_SOCIETY);
+        state.flags.guideStep = 1;
+      }
       commit();
       toast(kind === 'reset-sample' ? 'Demo reset with the Neelgiri register loaded (09:00).' : 'Demo reset. Start with step 1: import the register.', 'ok');
     }
@@ -2810,6 +3424,7 @@
         const text = societyUpdateText();
         copyText(text).then((ok) => {
           state.flags.updateCopied = true;
+          state.flags.updateCopiedAt = state.clock;
           log(null, 'update', `Society update generated at ${hhmm(state.clock)} (totals only; small welfare counts suppressed).`);
           commit();
           if (!ok) {
@@ -2823,11 +3438,35 @@
       case 'msg-bulk': openBulkFromMsg(el.dataset.msg); break;
       case 'msg-handled': {
         const m = state.msgs[el.dataset.msg];
-        if (m) { m.handled = !m.handled; save(); renderAside(); }
+        if (m) { m.handled = !m.handled; ui.msgOpen.delete(el.dataset.msg); save(); renderAll(); }
+        break;
+      }
+      case 'msg-expand': {
+        const k = el.dataset.msg;
+        if (ui.msgOpen.has(k)) ui.msgOpen.delete(k); else ui.msgOpen.add(k);
+        renderAside();
         break;
       }
       case 'toggle-guide': ui.guideOpen = !ui.guideOpen; renderAside(); break;
-      case 'guide-go': GUIDE[Number(el.dataset.step)].go(); break;
+      case 'toggle-steps': ui.stepsOpen = !ui.stepsOpen; renderAside(); break;
+      case 'toggle-inbox': ui.inboxOpen = !ui.inboxOpen; renderAside(); break;
+      case 'guide-go': GUIDE[guideIndex()].go(); break;
+      case 'guide-prev':
+      case 'guide-next':
+      case 'guide-jump': {
+        const i = guideIndex();
+        const n = a === 'guide-jump' ? Number(el.dataset.step) : a === 'guide-next' ? i + 1 : i - 1;
+        state.flags.guideStep = Math.max(0, Math.min(GUIDE.length - 1, n));
+        if (a === 'guide-jump') ui.stepsOpen = false;
+        ui.guideOpen = true;
+        save();
+        renderAside();
+        const g = $('#guide-h');
+        if (g) { g.setAttribute('tabindex', '-1'); g.focus(); }
+        break;
+      }
+      case 'open-handover': openModal('handover'); break;
+      case 'open-scenario': openModal('scenario'); break;
       default: break;
     }
   });
@@ -2869,7 +3508,12 @@
 
   // ── Boot ───────────────────────────────────────────────────────────────────
   // Testing hook (read-only snapshot); harmless in normal use.
-  window.__khairiyat = { snapshot: () => JSON.parse(JSON.stringify(state)), stats: () => stats() };
+  window.__khairiyat = {
+    snapshot: () => JSON.parse(JSON.stringify(state)),
+    stats: () => stats(),
+    guide: () => GUIDE.map((g, i) => ({ title: g.title, done: stepDone(i), checks: g.checks.map((c) => { try { return !!c[1](state); } catch (e) { return false; } }) })),
+    messages: () => MSG_SPECS.map((sp) => ({ id: sp.id, step: sp.step, status: msgStatus(sp.id) }))
+  };
 
   processMessages();
   checkCoverage();

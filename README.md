@@ -1,12 +1,18 @@
-# Khairiyat (ख़ैरियत): clickable prototype, version 2
+# Khairiyat (ख़ैरियत): clickable prototype, version 3
 
 A roll-call and welfare follow-up desk for **one housing society** in Delhi-NCR, on the day after the Snap (2018).
 
-The desk works towards one coordination aim: **no unresolved household and no open welfare case without an accepted next step.** That aim is not a safety guarantee. Khairiyat never decides that anyone is safe, missing or in danger.
+Khairiyat helps the society's coordinator make sure that:
 
-> **All data is fictional.** *Neelgiri Apartments*, *Gulmohar Enclave* and *Palm Grove Villas* (all “Sector 00”), their units, every person and every message are invented for this demo.
+- every household is either confirmed or has someone responsible for checking it;
+- every reported welfare concern has a next step that a named person has **accepted**, with a deadline;
+- nothing is quietly dropped.
 
-Version 2 follows a critical review of version 1 (items A–J). The review, the change log and the test report are in [`docs/REVIEW-AND-CHANGES.md`](docs/REVIEW-AND-CHANGES.md).
+It is a coordination tool. It is not a safety guarantee, not an emergency service, and not a register of missing people.
+
+> **All data is fictional.** Neelgiri Apartments, Gulmohar Enclave and Palm Grove Villas (all “Sector 00”), their units, every person and every message are invented.
+
+What changed in version 3, and why, is in [`docs/DEMO-AND-DESIGN-REVIEW.md`](docs/DEMO-AND-DESIGN-REVIEW.md). Version 2's review is kept in [`docs/REVIEW-AND-CHANGES.md`](docs/REVIEW-AND-CHANGES.md).
 
 ---
 
@@ -15,288 +21,284 @@ Version 2 follows a critical review of version 1 (items A–J). The review, the 
 1. Unzip the folder.
 2. Double-click **`index.html`** to open it in a modern browser.
 
-There is no server, install, internet connection, API key or external library. Everything is plain HTML, CSS and JavaScript.
+There is no server, install, internet connection, API key or external library.
 
-- Progress is saved in the browser's local storage, so a reload keeps it.
-- **Demo & data → Reset demo** starts again. *Reset demo, Neelgiri register loaded* skips step 1.
-- If the browser blocks local storage for local files, the demo still works but won't survive a reload. A notice says so.
+- Progress is saved in the browser's local storage, so a reload keeps your place in the walkthrough.
+- If the browser blocks local storage for local files, the demo still works but won't survive a reload.
 
 | File | What it is |
 |---|---|
 | `index.html` | Page shell |
 | `styles.css` | All styling (system fonts only) |
-| `app.js` | The application: state, rules, rendering, demo scenario |
-| `README.md` | This file |
-| `docs/REVIEW-AND-CHANGES.md` | Critical review (A–J), change log, test report |
-| `qa/e2e-check.js` | Optional automated browser check. Needs Node and Playwright; **not needed** to use the prototype. |
+| `app.js` | State, rules, rendering, scenario and walkthrough |
+| `docs/` | Review documents, change logs and test reports |
+| `qa/e2e-check.js` | Optional automated browser check (needs Node and Playwright) |
+| `qa/check-no-em-dash.js` | Optional check that no file contains an em dash (needs Node) |
+
+---
+
+## The scenario (fictional)
+
+Yesterday at about 6:30 pm, half of all people everywhere vanished. This is the next morning at Neelgiri Apartments, Sector 00, Gurugram:
+
+- **Size:** 4 towers and 160 flats. Roughly 550 people lived here before. That figure is a fictional estimate for context only; Khairiyat does not count people.
+- **Households:** the loss is uneven. Some households lost no one, some lost a parent, partner, carer or child, and some flats haven't answered at all.
+- **Staff and services:**
+  - two of the five guards are gone;
+  - Tower C's intercom panel is down;
+  - the Tower B lift has stopped;
+  - the market chemist is shut.
+- **You** are Priya, the RWA secretary, running the desk from 09:00. Your job is not to find out who vanished. It is to make sure every household is reached, every welfare concern has a responsible next step, and nothing is dropped.
+
+**Inside the app:** the full text is under **More → About this scenario**. The demo clock moves only when you press **+15 min**, so a morning is compressed into about 75 minutes.
 
 ---
 
 ## The model in one minute
 
-Each unit has two **independent** records:
-
-| Record | Values | What it means |
-|---|---|---|
-| **Household** | Unconfirmed · पुष्टि बाकी / Confirmed · पुष्टि हुई | Confirmed means someone in the household was reached (channel and reporter recorded), or a named source said it is away or vacant. It is household-level, not a check on every person. |
-| **Welfare case** | none / open / closed | Open cases move through *open → contact attempted → handoff agreed*. Only a recorded **outcome with evidence** closes a case. |
-
-- Confirming a household never closes a case, and closing a case never confirms a household.
-- A confirmed household can get a new concern.
-
-Each unresolved unit (household unconfirmed, or a case open) has at most one **task**: one owner, a deadline, and an acceptance status.
-
-| Next-step state | Meaning |
-|---|---|
-| **Needs an owner** | Nobody has been asked. |
-| **Awaiting acceptance** | Assigned; the person hasn't said yes. **Not counted as covered.** |
-| **Covered** | Accepted, and the deadline hasn't passed. At the deadline minute the task shows **Due now** and is still covered. |
-| **Overdue** | The deadline has passed. The owner is unchanged; the desk checks in, extends with a reason, or reassigns. |
-
-**Next-step coverage** is the share of unresolved units whose next step is covered. The app records when it first reaches 100%. It is styled neutrally, and every place it appears says it is **not a safety measure** and lists what is still outstanding.
+- **Household** (per unit): *Unconfirmed* or *Confirmed*.
+  - Confirmed means an adult in the household was reached, with the channel and reporter recorded, or a named source said the flat is away or vacant.
+  - It never means everyone linked to the flat is safe.
+- **Welfare case** (per unit, independent of the household): open, moving through *open → contact attempted → handoff agreed*.
+  - Only an outcome recorded **with evidence** closes it.
+  - A confirmed household can get a new case, and closing a case never confirms a household.
+- **Next step** (one task per unresolved unit): an owner, a deadline and an acceptance.
+  - *Needs an owner*
+  - *Awaiting acceptance* (not counted as covered)
+  - *Covered* (accepted, not past the deadline; **Due now** at the deadline minute)
+  - *Overdue* (still the owner's task: check in, extend with a reason, or reassign)
+- **Next-step coverage:** the share of unresolved units whose next step is covered. A coordination measure, never a safety measure.
 
 ---
 
 ## Screen layout
 
-- **Header:**
-  - the demo clock with **+15 min**;
-  - Import register, Bulk update, Export CSV, Settings;
-  - *Demo & data* (reset and delete).
-- **KPIs:**
-  - Households confirmed, Households unconfirmed, Open welfare cases;
-  - Needs an owner, Awaiting acceptance, Overdue (with “due now”);
-  - a neutral next-step coverage line.
-- **Tabs:**
-  - **Unresolved work (बाकी काम):** six groups.
-    1. Welfare cases needing action, ordered Urgent → Not yet assessed → Not urgent.
-    2. Overdue, with check in / extend / reassign.
-    3. Needs an owner.
-    4. Awaiting acceptance, with Record response.
-    5. Welfare cases in progress.
-    6. Being followed up.
-  - **Unit register (फ़्लैट सूची):**
-    - Search, plus filters for household, welfare, next step and building.
-    - Grid view (only when every unit has a building and a floor) or list view.
-    - Multi-select.
-  - **Tasks by owner:** each person's load (accepted / awaiting / overdue / due now), a soft warning above the desk's limit, copyable messages.
-  - **Society update:** totals only.
-  - **History (इतिहास):** append-only, with filters.
-- **Unit drawer:** summary chips, then sections for Next step, Household, Welfare case and the unit's history. Only valid actions are offered.
-- **Demo guide:** a 12-step checklist that ticks off from the data. **Show me** jumps to the right place.
-- **Desk inbox:** scripted messages that arrive as the clock moves and as you act. Some are in Hinglish. **Khairiyat never interprets them**; you decide what to record.
+- **Header:** the demo clock with **+15 min**, **Bulk update**, and **More** (Import register, Export CSV, Handover summary, About this scenario, Settings, Reset demo, Delete all data).
+- **Summary:**
+  - households confirmed and unconfirmed;
+  - open welfare cases;
+  - a boxed group of the counts that need action: need an owner, awaiting acceptance, overdue, due now;
+  - a neutral coverage line.
+- **Unresolved work:** a **Next priority** line, then six groups in priority order:
+  1. Welfare cases needing action
+  2. Overdue: check with the owner
+  3. Needs an owner
+  4. Awaiting acceptance
+  5. Welfare cases in progress
+  6. Being followed up
+- **Other tabs:**
+  - **Unit register:** grid or list, search, filters, multi-select;
+  - **Tasks by owner:** per-person load, with a soft warning;
+  - **Society update:** totals only;
+  - **History:** append-only.
+- **Unit drawer:** separate sections for *Next step*, *Household* and *Welfare case*, each with only its valid actions, plus the unit's own history.
+- **Walkthrough panel:**
+  - one step at a time, with what has happened, exact actions, what you should see, why it matters, the step's messages, and a live **Done when** checklist that doubles as “still missing”;
+  - **Back**, **Show me** and **Next step** (enabled only when the data shows the step is done);
+  - a list of all 18 steps for going back or jumping ahead.
+- **Desk inbox:** the scripted messages. Each is labelled with its step; the current step's messages are highlighted. A message counts as handled when its step is complete, or when you mark it handled.
+
+On screens narrower than 1100 px, the walkthrough step appears above the work area and the inbox below it.
 
 ---
 
-## The demo (12 guide steps, designed for about 10–15 minutes)
+## Reset and complete the walkthrough (about 18–22 minutes)
 
-Start with **Demo & data → Reset demo**. The clock starts at **09:00**. The steps can be done in any order, but the scripted messages assume roughly this timeline. (The 10–15 minutes is a design target; it has not been timed with a presenter.)
+**Reset first.** Choose **More → Reset demo (empty register)**, type `RESET`, and confirm. The clock returns to 09:00 and the walkthrough to step 1. Then follow the panel on the right; each step below matches it exactly. Press **+15 min** only when a step tells you to: an extra press makes deadlines pass, and the final review will say so.
 
 ### 09:00
 
 1. **Import the register.**
-   - *Import register → Neelgiri sample → Validate*: a duplicate `C-1004` row and a row with no unit identifier are flagged.
-   - Import the 160 valid units. Every household starts Unconfirmed.
-2. **Confirm the six vacant flats.**
-   - *Show me* selects them, then *Confirm household — away / vacant…*.
-   - The source is prefilled with the literal register note, nothing more.
-3. **Apply the guard's intercom round.**
-   - *Copy to bulk update → Validate.* Every `OK` line is rejected because none names a channel.
-   - The guard's message says every call was on the intercom, so set *Channel for OK lines* to **Intercom** and validate again. Now 92 lines are valid; `A-1O3` (a letter O) and `B-204,HELP` (no category) stay flagged. Apply.
-   - Then open **A-402** → *Confirm — adult reached*, channel *Message from the household*, reported by the resident.
-4. **Split Tower C between two wardens.**
-   - *Show me* selects floors 6–10: assign them to “Arjun (C-304)”, +45 min.
-   - *Show me* again selects floors 1–5: assign them to “Farhan (B-703)”, +45 min.
-   - Optional: select all 38 for one person to see the soft workload warning.
-   - Both batches are **Awaiting acceptance**; coverage stays 0.
+   - Click **Import the register**, then the sample **Neelgiri Apartments (regular towers, scripted demo)**, then **Validate**.
+   - A duplicate `C-1004` row and a row with no unit are flagged. Click **Import 160 units (skip 2)**.
+2. **Vacant flats.**
+   - **Show me** selects the six flats noted “no residents on record”.
+   - Click **Confirm household: away / vacant…** and keep the source `Register note: no residents on record`.
+3. **Guard's intercom round.**
+   - Inbox → Ramesh → **Copy to bulk update** → **Validate**: all 95 lines are rejected (no channel).
+   - Set **Channel for OK lines that don't name one** to **Intercom** → **Validate** (93 valid) → **Apply 93 valid lines**.
+   - In the box, change `A-1O3` to `A-103` and delete `B-902,HELP`, then **Validate** → **Apply 1 valid line**.
+4. **Self-reports and a rumour.**
+   - Open A-402 → **Confirm: adult reached…** → **Message from the household**, reported by `Resident of A-402`, tick the adult box.
+   - On the B-704 rumour, click **Mark handled** and record nothing.
+5. **B-902 has lost her carer.**
+   - **Show me** → **Confirm: adult reached…** → **Intercom**, `Guard room`; tick the adult box and **They reported someone who may need help**.
+   - In the welfare form: **Adult who can't manage alone**, **Urgent**, source `Guard's intercom call`.
+   - **Assign helper…** `Sunita (A-603)`, **+60 min**. Record her **YES** (**Phone call**).
+6. **Hand out the flats nobody reached.** Use **Show me** three times:
+   - Tower C floors 6–10 → `Arjun (C-304)`, +45 min;
+   - floors 1–5 → `Farhan (B-703)`, +45 min;
+   - Tower D floors 7–10 → `Meena (D-204)`, +60 min.
 
 ### +15 min → 09:15
 
-5. **Record a YES and a NO, then reassign.**
-   - Arjun replies YES and Farhan NO. Record both in *Awaiting acceptance → Record response…*. A NO needs a reason.
-   - Farhan's 19 flats go back to **Needs an owner**: reassign them to “Rohit (B-501)” with +90 min, and record his YES in person.
+7. **YES, NO, reassign.**
+   - Under **Awaiting acceptance**, record Arjun's and Meena's YES, and Farhan's NO with reason `Children alone at home`.
+   - His 19 flats return to **Needs an owner**: **Assign 19…** → `Rohit (B-501)`, +90 min. Record Rohit's YES (**In person at the desk**).
 
 ### +15 min → 09:30
 
-6. **Apply Arjun's reply.**
-   - *Copy to bulk update → Validate*: the Hinglish line is flagged, not guessed. Each line names its own channel. Apply.
-   - **C-702** opens a welfare case with priority *Not yet assessed*.
-   - **C-804** and **C-1004** (no answer) need an owner.
-   - **C-803** is confirmed away, with its source.
-7. **C-702**, first part: *Set priority…* (Urgent), *Assign helper…* “Dr. Kavita (A-201)”, then record her YES.
-8. **C-804**, first part:
-   - After the relative's call: *Report a welfare concern* (Adult who can't manage alone).
-   - Assign “Nisha (D-503) + Sunita (A-603)” and record their YES.
-9. **Meena**, first part: *Show me* selects Tower D's 15 unowned flats. Assign them to “Meena (D-204)” with +30 min (deadline 10:00), and record her YES.
+8. **Arjun's report.** **Copy to bulk update** → **Validate** (the Hinglish line is flagged) → **Apply 19 valid lines**.
+9. **C-702, child alone.**
+   - **Set priority…** → **Urgent**, reason `Young child alone`.
+   - **Assign helper…** `Dr. Kavita (A-201)`, +30 min. Record her YES (**Phone call**).
+10. **C-804, daughter's worry.**
+    - **Report a welfare concern…** → **Adult who can't manage alone**, priority **Not yet assessed**, source `Daughter's phone call`.
+    - Assign `Nisha (D-503) + Imran (C-601)`, +30 min. Record their YES.
 
 ### +15 min → 09:45
 
-- **Step 7, C-702:** *Record interim update* (Helper is with the resident) with a next deadline. The household stays Unconfirmed: only a child has been reached.
-- **Step 8, C-804:**
-  - Record “no answer”, then *Record contact…* → Police, *They agreed to act or take over*, with a recipient and reference.
-  - The case stays open as **Handoff agreed — not yet confirmed**, with a follow-up owned by the desk.
-  - Optional: try closing it as *Taken over by a service* with weak evidence. It is refused.
+11. **Interim updates.**
+    - C-702: **Record interim update…** → **Helper is with the resident**, note `Aunt from D-603 on her way`, +60 min.
+    - B-902: **Visit made: more help needed**, note `Neighbours bringing meals; daughter travelling`, +120 min.
+12. **No answer, no commitment.**
+    - C-804 → **Record “no answer”**.
+    - **Record contact with a service or person…** → **Police (100)**, **Reached them, but no commitment yet**. Keep the follow-up with `Desk (coordinator)`, +60 min.
 
 ### +15 min → 10:00
 
-- **Step 9:** Meena's 15 tasks show **Due now**. They are still covered, and nothing is overdue.
-- The son's call, the grandmother update, Meena's “running late” message and the D-502 report arrive.
+13. **New concern at a confirmed household.**
+    - Meena's flats now show **due now**: still hers, still covered.
+    - D-502 → **Report a welfare concern…** → **Essentials (food, water, medicines)**, **Not yet assessed**, source `Neighbour's WhatsApp message`.
+    - Assign `Nisha (D-503)`, +60 min. Record her YES.
 
 ### +15 min → 10:15
 
-- **Step 9:** the 15 tasks are **Overdue**, still Meena's. *Record check-in…*, then *Extend deadline…* with her reason (or reassign).
-- **Step 10, outcomes with evidence:**
-  - C-702: *Confirm — adult reached* (door visit, reported by the helper). The case stays open. Then *Close case*: Care in place, *Seen in person*.
-  - C-804: *Close case*: Resident located elsewhere, *Spoke to family*. The household stays Unconfirmed; record it separately (*Confirm — away / vacant*, source: the son's call).
-- **Step 11, a correction and a new concern:**
-  - B-203 → *Correct household status…* with a reason, then confirm B-302.
-  - D-502, already confirmed: *Report a welfare concern*. The household stays Confirmed.
-- **Step 12, society update and coverage:**
-  - *Society update → Copy update.*
-  - Assign the remaining units and record acceptance. Coverage is recorded at 10:15, alongside what is still outstanding.
+14. **Overdue list.**
+    - Meena's 15 tasks are overdue and still hers. On her message: **Copy to bulk update** → **Validate** → **Apply 9 valid lines**.
+    - In **Overdue**, click **Extend deadline…** for her remaining 6: +15 min, reason `Lift stopping; 6 flats left`.
+15. **Outcomes with evidence.**
+    - C-702: **Confirm: adult reached…** (**Door visit**, `Dr. Kavita (A-201)`). Then **Close case with outcome…** → **Care in place**, details `Aunt from D-603 staying with the child`, **Seen in person by a volunteer or helper**.
+    - C-804: **Close case with outcome…** → **Resident located elsewhere and safe**, `With her son in Faridabad`, **Spoke to family or the carer**. Then **Confirm: away / vacant…** with source `Son phoned the desk`.
+16. **Correction.**
+    - B-203 → **Correct household status…**, reason `Guard entered B-203 by mistake; it was B-302`.
+    - Then confirm B-302 (**Intercom**, `Guard room`).
+17. **Everything accepted.**
+    - **Needs an owner → Assign all 6 flats needing an owner…** → `Arjun (C-304)`, +60 min. Record his YES.
+    - Coverage is recorded at 10:15.
+18. **Final review.** **Society update → Copy update**, then **Open handover summary** in the walkthrough panel.
 
-**Also try:**
+**The 23 scripted messages**, in walkthrough order:
 
-- Settings: change the workload limit, then check *Tasks by owner*.
-- Search the register (`c702`, an owner's name).
-- *Hide welfare details* on and off.
-- History filters such as *Corrections and edits*.
-- Export CSV.
-- The two irregular sample registers (below).
-
----
-
-## Registers: identifiers are strings
-
-**Format.** CSV, one row per unit, with an optional header:
-
-- `UNIT` (also *FLAT*, *HOUSE*, *VILLA*, *PLOT*, *ID*) is required.
-- `BUILDING` (or *TOWER*, *BLOCK*, *WING*), `FLOOR` and `NOTE` are optional.
-- Without a header, columns are read in that order. Quoted fields are supported.
-
-**What is checked:**
-
-- Identifiers are kept exactly as written: `A-1204`, `B2-307`, `T2/08/03`, `007`, `Villa 18A`, `Shop 3`. Nothing is inferred from their format.
-- Rejected rows: a missing identifier, a duplicate row (also after trimming spaces), a comma inside an identifier, identifiers over 40 characters, and notes over 60 characters.
-- **Ambiguity is never guessed.** Two identifiers that differ only by letter case or spacing are both rejected.
-- The same identifier in two named buildings is kept and qualified as `Building/ID` (`Rose/101`, `Lily/101`), with a warning. A bare `101` in a bulk line is then flagged as ambiguous.
-- `Plot 4` and `Plot 04` are both imported, with a warning to check that they are different units.
-
-**Layout:**
-
-- The **grid** is used only when every unit has a building and a floor. It sizes itself from the register.
-- Otherwise the **list** is used. There is no floor-plan editor.
-- Building, floor and note can be edited per unit, with a history entry. The identifier can't; re-import to change it.
-
-**Fictional samples** (Import → *Insert a fictional sample*):
-
-| Sample | Shows |
+| Arrives | Messages |
 |---|---|
-| Neelgiri Apartments | The scripted demo: 4 towers × 10 floors × 4 units. A duplicate row and a missing identifier are flagged. |
-| Gulmohar Enclave | Irregular buildings: `A-1204`, `B2-G01`, `T2/08/03`, `007`, `Shop 3` (no building), `101` in two buildings, a trailing-space duplicate, a case-only ambiguity. |
-| Palm Grove Villas | Independent homes, no buildings or floors: `Villa 18A`, `Plot 4` / `Plot 04`, a quoted identifier with a comma (rejected), a duplicate. |
+| at import | Ramesh's intercom list; A-402 resident; the B-704 rumour |
+| after the guard's list is applied | Ramesh about B-902 |
+| on assignment | Sunita's reply; Rohit's YES; Kavita's YES; the pair's YES; Nisha's YES; Arjun's second YES |
+| 09:15 | Arjun's YES; Farhan's NO; Meena's YES |
+| 09:30 | Arjun's report; then, once C-804's no answer is applied, the daughter's call |
+| 09:45 | Kavita's update; Sunita's update; the pair's second visit |
+| 10:00 | the D-502 report; Ramesh's B-203 correction |
+| 10:15 | Meena running late; the aunt arrives at C-702; the C-804 son's call |
 
-Every feature works with imported registers: search, assignment, acceptance, cases, bulk updates, history and export. The scripted inbox and the demo guide only follow Neelgiri.
+### The designed end state, and what “complete” means
 
----
+**Step 18 is complete only when all of these hold:**
 
-## Bulk update: strict `UNIT,CODE[,DETAIL]`
+- steps 1–17 are true in the data **now**;
+- all 23 messages have arrived and been actioned or marked handled;
+- nothing needs an owner, awaits acceptance, or is due or overdue;
+- a society update has been generated since coverage was reached.
 
-| Line | Effect |
-|---|---|
-| `C-701,OK,VISIT` | Household confirmed: adult reached. A channel is **required**: `INTERCOM`, `PHONE`, `VISIT`, `MESSAGE` or `UNKNOWN` (recorded as “Channel not stated”). |
-| `C-803,AWAY,family phoned warden` | Household confirmed as away or vacant, with that source. “No answer” is refused as a source. |
-| `C-804,NOANS` | An attempt on the unit's open task. The task closes and the unit needs a new owner. Not evidence of anything. |
-| `C-702,HELP,CHILD` | A welfare case opens (`CHILD`, `ADULT`, `MEDICAL` or `ESSENTIALS`) with priority **Not yet assessed**, the same default as the manual form. |
+**At 10:15 the summary shows:**
 
-- **Channels.** Lines without a channel are rejected, unless you choose a **batch channel** because the reporter told you how every contact was made. Entries record that the channel came from the batch setting. Khairiyat never fills in a channel or a source by itself.
-- **Free text** in English or Hinglish is flagged, never interpreted.
-- **Typos.** A letter O typed for a zero gets a “did you mean” hint but is not changed.
-- **Duplicates and no-ops.** Duplicate units in one paste are flagged. `OK` on an already-confirmed household is a no-op. `OK` on a unit with an open case confirms the household and keeps the case.
-- **Preview.** Errors are listed first. Only valid lines are applied, and error lines stay in the box.
+- **129 of 160** households confirmed.
+- **31 unconfirmed**, each with an accepted owner and a deadline:
+  - Meena: 6, due 10:30;
+  - Rohit: 19, due 10:45;
+  - Arjun: 6, due 11:15.
+- **Two welfare cases deliberately open**, each with its reason:
+  - **B-902:** long-term care not arranged. Sunita accepted; next report 11:45.
+  - **D-502:** medicine not yet found. Nisha accepted; due 11:00.
+
+Closing those cases to tidy the screen would be dishonest. The walkthrough is complete when nothing is unowned, unaccepted, overdue or unexplained; the emergency is not over.
+
+If you press **+15 min** after finishing, Meena's tasks fall due at 10:30. Steps 17 and 18 then show as incomplete again, and the handover summary says why.
+
+**Other things to try:**
+
+- the two irregular registers: **More → Import register**, then *Gulmohar Enclave* or *Palm Grove Villas*;
+- the workload limit in **Settings**;
+- the history filters;
+- *Hide welfare details*;
+- **Export CSV**.
 
 ---
 
 ## Rules that apply everywhere
 
-- **Acceptance.** Recorded by the coordinator from what the person said: YES or NO, plus how they said it. A NO needs a reason and returns the units to *Needs an owner*. Tasks given to “Desk (coordinator)” are accepted automatically, because they are the coordinator's own.
-- **Deadlines.** Upcoming before the deadline, **due now** at it, **overdue** after it. Overdue never removes the owner. Extensions need a reason. Reassignment closes the old task with a reason, and both stay in the history.
-- **Cases.**
-  - Contact with a service or person is recorded with its result: no reply, reached but no commitment, or handoff agreed. Recording it never closes the case. If nobody owns the next step, a follow-up owner and deadline are required.
-  - Closing needs an outcome, details, **evidence** and who recorded it. *Taken over by a service* needs the service's confirmation or someone seeing it.
-  - Cases can be reopened, or withdrawn as entered in error, with a reason.
-- **Priority** is the coordinator's judgement (Urgent / Not yet assessed / Not urgent). It is not medical triage. Every welfare form says: *if anyone may be in immediate danger, call emergency services directly now; don't wait for this desk.*
-- **Volunteer safety.** Every task message says:
-  - knock or call only;
-  - don't enter a home or force a door;
-  - don't stay anywhere unsafe;
+- **Evidence is never invented.**
+  - A bulk `OK` line needs a channel (`INTERCOM`, `PHONE`, `VISIT`, `MESSAGE`, or `UNKNOWN` for “channel not stated”), unless you explicitly choose a batch channel for that paste.
+  - Free text is flagged, never interpreted, and typos are flagged, never corrected.
+  - “No answer” is never accepted as a source.
+- **Acceptance** is recorded from what the person said: YES or NO, and how. A NO needs a reason and returns the units to *Needs an owner*. Tasks given to *Desk (coordinator)* are accepted automatically.
+- **Deadlines:** upcoming, then **due now**, then **overdue**. An extension needs a reason. Reassigning closes the old task with a reason. Everything stays in the history.
+- **Cases:**
+  - recording a contact never closes a case;
+  - closing needs an outcome, details and evidence;
+  - *Taken over by a service* needs the service's confirmation or a sighting;
+  - cases can be reopened, or withdrawn as entered in error, each with a reason.
+- **Priority** is the coordinator's judgement (Urgent / Not yet assessed / Not urgent), never medical triage. “Not yet assessed” is the default on both the bulk and manual routes.
+- **Volunteer safety:**
+  - task messages say knock or call only;
+  - never enter or force a door, and leave if unsafe;
   - call emergency services directly in an emergency.
 
-  Messages contain no emergency numbers. The contact form says Khairiyat places no calls and that the numbers in Settings haven't been verified for every location.
-- **Workload.** A soft warning above a per-person limit (default 20 open tasks, editable in Settings). The limit is an assumption, not a standard. It never blocks.
+  They contain no emergency numbers. Khairiyat never calls or messages anyone.
+- **Registers:**
+  - Unit identifiers are strings, kept exactly as written (`A-1204`, `T2/08/03`, `007`, `Villa 18A`).
+  - Duplicates, missing identifiers and ambiguity are flagged, never guessed. The same identifier in two named buildings becomes `Building/ID`.
+  - The grid is shown only when every unit has a building and a floor; otherwise the list.
 
 ---
 
-## Privacy and security: what this prototype does and does not do
+## Privacy and security
 
 **It demonstrates:**
 
-- **Minimal data:** unit, household basis, case concern category, outcome and evidence, owner and deadline. No names of missing people, no ID numbers, no diagnoses.
-- **Welfare details hidden on screen by default.** This is a display setting, **not access control**.
-- **Limited-information messages:**
-  - wardens see unit numbers and the reply format only;
-  - a helper's message names only their own case's reported concern;
+- **Minimal data:** unit, household basis, concern category, outcome and evidence, owner and deadline. No names of missing people, no diagnoses.
+- **Display only:** welfare details are hidden on screen by default. This is a display setting, not access control.
+- **Limited messages:**
+  - volunteer messages carry only what the task needs;
   - the society update is totals only, with welfare counts of 1–4 shown as “fewer than 5”.
-- **Careful wording:** “Unconfirmed” and “no answer” are never treated as evidence that anyone has vanished or needs help.
 
 **It does not provide:**
 
-- **Accounts or permissions:** no accounts, logins or role-based access. Acceptance is the coordinator's record of what someone said, not a signature.
-- **Confidentiality:** data sits in the browser's `localStorage`, which is **not encrypted**. Anyone using that browser profile can read it.
-- **Control over copied text:** once pasted into WhatsApp or SMS, it lives on those phones.
-- **Real calls or messages:** Khairiyat never dials, sends or posts anything. The only ways data leaves the page are text you copy and CSV files you download.
+- accounts or permissions;
+- encryption (data sits in this browser's `localStorage`);
+- control over text once you paste it elsewhere;
+- any real calls or messages.
 
-**A production version would need:** authenticated multi-user access with server-side permissions, encryption, retention and deletion rules, a notice to residents, and compliance with India's IT (SPDI) Rules 2011 for health-related data.
+A production version would need authenticated multi-user access, encryption, retention rules, a notice to residents, and compliance with India's IT (SPDI) Rules 2011 for health-related data.
 
 ---
 
 ## Known limitations
 
-- **One device, no sync** (the approved scope). Acceptance and outcomes are only as accurate as what the coordinator records.
-- **Coverage can be gamed:** assigning everything to the desk makes it “covered” at once. *Tasks by owner* and the workload warning make this visible but don't prevent it.
-- **Demo clock:** time moves only with **+15 min**.
-- **Scripted inbox:** only for the Neelgiri register. If you take a different path, some messages may never arrive.
-- **Re-importing replaces the whole register** (after an explicit tick). There is no merge.
-- **Identifiers** can't contain commas and can't be renamed in place.
-- **Clipboard:** copy uses the Clipboard API, falling back to `execCommand`. If both fail, the text is selected for manual copying. Clipboard contents were **not verified** in testing.
-- **Accessibility:** the following are in place:
-  - semantic buttons and labels;
-  - focus styles;
-  - text alongside colour, and an `aria-label` on every grid cell;
-  - Escape closes dialogs and the drawer.
+- **One device, no sync.** Acceptances and outcomes are only as accurate as what the coordinator records.
+- **Gaming coverage.** Coverage can be gamed by assigning everything to the desk. The workload warning makes it visible but doesn't block it.
+- **Scripted inbox.** It runs only for the Neelgiri register, and assumes roughly the walkthrough's order. Other paths are possible, but some messages may arrive early or never.
+- **Re-importing** replaces the whole register (after an explicit tick).
+- **Clipboard copy** was not verified at the operating-system level.
+- **Accessibility.** In place:
+  - text labels alongside colour;
+  - focus outlines;
+  - Escape closes dialogs;
+  - the walkthrough's state is in text.
 
-  Not screen-reader tested; dialogs don't trap focus.
-- **No dark mode.** English interface with Hindi labels only.
+  Not screen-reader tested; dialogs don't trap focus. The narrow-screen layout uses CSS `display: contents` on the side panel, which some older browsers expose poorly to assistive technology.
+- **Language.** English interface with Hindi labels only.
 
 ---
 
-## Verification performed
+## Verification
 
-See [`docs/REVIEW-AND-CHANGES.md`](docs/REVIEW-AND-CHANGES.md) for the full test report.
+See the test report in [`docs/DEMO-AND-DESIGN-REVIEW.md`](docs/DEMO-AND-DESIGN-REVIEW.md).
 
-- `node --check` passes for `app.js` and `qa/e2e-check.js`.
-- The automated run uses **headless Chromium** (Playwright 1.56.1). It loads `index.html` from disk (`file://`).
-  - It covers the 12 demo steps, the A–J acceptance checks and the regression checks.
-  - **185 of 185 checks passed** on three consecutive runs, with no console errors and no network requests.
-- **Not verified:**
-  - Firefox, Safari, Edge or a physical phone;
-  - screen readers;
-  - actual clipboard contents;
-  - demo timing with a real presenter.
-
-To re-run the automated check (needs Node and Playwright with Chromium):
+To re-run the automated checks (needs Node, and Playwright with Chromium):
 
 ```
 npm install playwright        # once, if not installed
+node qa/check-no-em-dash.js
 node qa/e2e-check.js [screenshot-folder]
 ```

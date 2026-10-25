@@ -1,6 +1,8 @@
-# Khairiyat: critical review, change log and test report
+# Khairiyat version 2: critical review, change log and test report
 
-## Part 1 — Critical review (written before any code was changed)
+> Historical record of version 2. Some details below (the 12-step demo, the scripted messages, the 185-check test run) were superseded by version 3: see [`DEMO-AND-DESIGN-REVIEW.md`](DEMO-AND-DESIGN-REVIEW.md).
+
+## Part 1: Critical review (written before any code was changed)
 
 Each item records:
 
@@ -284,7 +286,7 @@ A deadline set between clock steps (for example 09:50) goes straight from upcomi
 
 ---
 
-## Part 2 — Change log (version 1 → version 2)
+## Part 2: Change log (version 1 → version 2)
 
 The v1 files were the starting point: layout, helpers, rendering pattern, modal and form framework, history, CSV, reset and delete were kept. The data model and the rules around it were rewritten.
 
@@ -393,7 +395,7 @@ Rewritten for v2 (185 checks). It is portable: it resolves `../index.html` from 
 
 ---
 
-## Part 3 — Test report
+## Part 3: Test report
 
 ### What was run
 

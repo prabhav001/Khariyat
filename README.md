@@ -296,10 +296,13 @@ A production version would need authenticated multi-user access, encryption, ret
 
 See the test report in [`docs/DEMO-AND-DESIGN-REVIEW.md`](docs/DEMO-AND-DESIGN-REVIEW.md).
 
-To re-run the automated checks (needs Node, and Playwright with Chromium):
+To re-run the automated checks (needs Node; the prototype itself needs nothing installed):
 
 ```
-npm install playwright        # once, if not installed
-node qa/check-no-em-dash.js
+npm install                       # once: Playwright and pdfjs-dist, from package.json
+npx playwright install chromium   # once: the browser Playwright drives
+npm run check-em-dash
 node qa/e2e-check.js [screenshot-folder]
+npm run build-pdf                 # rebuild the submission PDF
+npm run verify-pdf -- submission/<file>.pdf
 ```

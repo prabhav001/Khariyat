@@ -1,7 +1,8 @@
 // Builds the A4 submission PDF from khairiyat-2-pager.html with headless Chromium.
 // Personal details come from details.local.json (git-ignored, so they never reach the public
 // repository) or, if that file doesn't exist, from details.json. Empty values keep the placeholders.
-// Usage: node submission/build-pdf.js   (needs Node and Playwright with Chromium)
+// Usage (once, in the repository root): npm install && npx playwright install chromium
+//        then: npm run build-pdf
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');

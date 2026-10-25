@@ -33,4 +33,4 @@ Checked against the official brief, “Prompt 2 | Case Submission | Flipkart APM
 Either checker gives the same page, size and placement results. Their word totals can differ by one, because the two tools split the Devanagari title differently.
 
 - **Python:** `pip install pdfplumber`, then `python3 submission/verify_pdf.py <file.pdf>` (on Windows, `py` instead of `python3`).
-- **Node only:** `npm install --no-save pdfjs-dist@4.10.38`, then `node submission/verify-pdf.mjs <file.pdf>`. It also reports any `[Your ...]` placeholder left unfilled.
+- **Node only:** run `npm install` once in the repository root (it installs both Playwright and pdfjs-dist from `package.json`), then `npm run verify-pdf -- <file.pdf>`. It also reports any `[Your ...]` placeholder left unfilled. Don't install these packages one at a time with `--no-save`: without `package.json`, each such install removes the packages installed before it.

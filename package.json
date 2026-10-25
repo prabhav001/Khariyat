@@ -1,0 +1,14 @@
+{
+  "name": "khairiyat-submission-tools",
+  "private": true,
+  "description": "Tools for building and checking the two-page submission PDF. The prototype itself (index.html) needs no installation.",
+  "scripts": {
+    "build-pdf": "node submission/build-pdf.js",
+    "verify-pdf": "node submission/verify-pdf.mjs",
+    "check-em-dash": "node qa/check-no-em-dash.js"
+  },
+  "devDependencies": {
+    "pdfjs-dist": "4.10.38",
+    "playwright": "^1.56.1"
+  }
+}

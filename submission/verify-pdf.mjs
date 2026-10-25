@@ -1,8 +1,8 @@
 // Checks the submission PDF against the assignment's measurable rules, using only Node.
 // Same checks as verify_pdf.py: page count and size, the font size of every text run, word counts
 // (cover, body, appendix), where the body ends, placeholder count, images and em dashes.
-// Usage (once):  npm install --no-save pdfjs-dist@4.10.38
-//        then:   node submission/verify-pdf.mjs submission/<file>.pdf
+// Usage (once, in the repository root):  npm install
+//        then:   npm run verify-pdf -- submission/<file>.pdf
 import fs from 'node:fs';
 import { getDocument, OPS } from 'pdfjs-dist/legacy/build/pdf.mjs';
 

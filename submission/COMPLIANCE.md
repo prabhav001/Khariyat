@@ -5,10 +5,10 @@ Checked against the official brief, “Prompt 2 | Case Submission | Flipkart APM
 | Requirement (source) | How it was met | Verified by |
 |---|---|---|
 | PDF only (2b) | `YourName_YourCollege.pdf`, built from `khairiyat-2-pager.html` by headless Chromium | `pdfinfo` opens it; all pages rendered and inspected |
-| 1,200-word limit, excluding appendices (2b) | Cover 71 + body 1,101 = **1,172 words**, placeholders included. A second count from the HTML gives 71 + 1,097 = 1,168. Appendix (457 words) excluded. | `verify_pdf.py`; DOM word count |
+| 1,200-word limit, excluding appendices (2b) | Cover 71 + body 1,094 = **1,165 words**, counting every table cell, the diagram's labels and all captions. The Node checker gives 1,164. Appendix (457 words) excluded. | `verify_pdf.py`, `verify-pdf.mjs` |
 | Body at most 2 pages, excluding cover and appendices (2c) | Cover (page 1), body (pages 2 and 3), appendix (page 4) | `verify_pdf.py`: the appendix starts on page 4 |
 | Font size 10 to 13, portrait, A4 (2d) | Every character between **10.0 and 13.0 pt**; all four pages 595 × 842 pt, portrait | `verify_pdf.py` reads the size of every character |
-| Visual aids allowed (2e) | Only marked placeholders (two tables, one diagram); no charts, diagrams or tables were produced. The only images are the template's logo on the cover. | Page images counted; pages inspected |
+| Visual aids allowed (2e) | Two tables (problem selection, success measures) and one workflow diagram drawn as inline SVG. All their text is real PDF text at 10 pt or larger and is included in the word count. The only images are the template's logo on the cover. | Every character's size measured; pages inspected |
 | Appendix at most 2 pages: references, citations, primary research (2f) | One page: references, a fact / assumption / hypothesis register, how to open the prototype | `verify_pdf.py` |
 | Use a copy of the template (2a) | The cover reproduces the template's structure, wording, blue (#1155CC) and logo. The body follows the four leading questions, plus a short risks section. | Side-by-side visual check |
 | File name `<your name>_<your college>` (4) | **Not yet possible**: the details are unknown. Copy `details.json` to `details.local.json` (git-ignored), fill it in and run `node submission/build-pdf.js`; the file is then named, for example, `Priya-Sharma_BITS-Pilani.pdf`. | |
@@ -21,7 +21,7 @@ Checked against the official brief, “Prompt 2 | Case Submission | Flipkart APM
 - **Template fonts.** Lexend and Outfit could not be installed offline. Liberation Sans, which is metrically compatible with Arial (the template's own text font), is used throughout, and FreeSans covers the Devanagari in the title.
 - **Cover sizes.** The template's cover text is 61 to 85 pt on its large page (about 20 to 28 pt if scaled to A4). It is set at 12 to 13 pt to stay within the size rule; the cover's layout, wording and colours are kept.
 - **Template page 2** (leading questions and instructions) is guidance, not content, so it is omitted. Its four questions are the body's section headings.
-- **Word count.** The cover is counted, even though the brief excludes only appendices. Placeholder text is counted. Replacing the four detail placeholders (13 words) with real details changes the total by a few words.
+- **Word count.** The cover is counted, even though the brief excludes only appendices. Table cells, diagram labels and captions are counted. Replacing the four detail placeholders (13 words) with real details lowers the total by a few words.
 
 ## Not verified
 

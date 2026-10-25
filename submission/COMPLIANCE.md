@@ -11,7 +11,7 @@ Checked against the official brief, “Prompt 2 | Case Submission | Flipkart APM
 | Visual aids allowed (2e) | Only marked placeholders (two tables, one diagram); no charts, diagrams or tables were produced. The only images are the template's logo on the cover. | Page images counted; pages inspected |
 | Appendix at most 2 pages: references, citations, primary research (2f) | One page: references, a fact / assumption / hypothesis register, how to open the prototype | `verify_pdf.py` |
 | Use a copy of the template (2a) | The cover reproduces the template's structure, wording, blue (#1155CC) and logo. The body follows the four leading questions, plus a short risks section. | Side-by-side visual check |
-| File name `<your name>_<your college>` (4) | **Not yet possible**: the details are unknown. Fill in `details.json` and run `node submission/build-pdf.js`; the file is then named, for example, `Priya-Sharma_BITS-Pilani.pdf`. | |
+| File name `<your name>_<your college>` (4) | **Not yet possible**: the details are unknown. Copy `details.json` to `details.local.json` (git-ignored), fill it in and run `node submission/build-pdf.js`; the file is then named, for example, `Priya-Sharma_BITS-Pilani.pdf`. | |
 | No em dashes (U+2014) | 0 in the PDF text (pdfplumber and pdftotext), 0 in all source and documentation files | `verify_pdf.py`, `qa/check-no-em-dash.js` |
 
 ## Interpretations

@@ -1,3 +1,8 @@
 node_modules/
 package-lock.json
 .DS_Store
+
+# Personal details and the PDFs built from them stay out of this public repository.
+submission/details.local.json
+submission/*.pdf
+!submission/YourName_YourCollege.pdf
